@@ -39,7 +39,7 @@
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            line-height: 1.8;
+            line-height: 1.9;
             transition: all 0.3s ease;
         }
 
@@ -55,25 +55,35 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 15px;
             z-index: 100;
             box-shadow: 0 2px 10px var(--shadow);
         }
 
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .header h1 {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: normal;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
         }
 
         .header-controls {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
         }
 
         /* 按鈕樣式 */
         .btn {
-            padding: 8px 16px;
+            padding: 8px 12px;
             border: none;
             border-radius: 6px;
             background: var(--button-bg);
@@ -85,26 +95,65 @@
 
         .btn:hover {
             opacity: 0.85;
-            transform: translateY(-1px);
         }
 
         .btn-icon {
             width: 40px;
             height: 40px;
             padding: 0;
-            font-size: 20px;
+            font-size: 18px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
+        /* 登入區 */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .login-screen h2 {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .login-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 30px;
+            background: #fff;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px var(--shadow);
+        }
+
+        .login-btn img {
+            width: 24px;
+            height: 24px;
+        }
+
         /* 側邊章節目錄 */
         .sidebar {
             position: fixed;
             top: 60px;
-            left: -300px;
-            width: 300px;
+            left: -320px;
+            width: 320px;
             height: calc(100vh - 60px);
             background: var(--header-bg);
             border-right: 1px solid var(--border-color);
@@ -121,6 +170,9 @@
             padding: 15px;
             border-bottom: 1px solid var(--border-color);
             font-weight: bold;
+            position: sticky;
+            top: 0;
+            background: var(--header-bg);
         }
 
         .chapter-list {
@@ -132,6 +184,7 @@
             border-bottom: 1px solid var(--border-color);
             cursor: pointer;
             transition: background 0.2s;
+            font-size: 14px;
         }
 
         .chapter-list li:hover {
@@ -164,22 +217,27 @@
 
         /* 主要內容區 */
         .main-content {
-            max-width: 800px;
+            max-width: 750px;
             margin: 0 auto;
-            padding: 80px 20px 100px;
+            padding: 80px 20px 120px;
+            display: none;
+        }
+
+        .main-content.show {
+            display: block;
         }
 
         .chapter-title {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             margin-bottom: 30px;
             padding-bottom: 15px;
             border-bottom: 2px solid var(--border-color);
+            text-align: center;
         }
 
         .chapter-content {
             font-size: 18px;
             text-align: justify;
-            white-space: pre-wrap;
         }
 
         .chapter-content p {
@@ -196,74 +254,120 @@
             height: 60px;
             background: var(--header-bg);
             border-top: 1px solid var(--border-color);
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
-            gap: 20px;
+            gap: 15px;
             z-index: 100;
         }
 
-        /* 字體大小控制 */
-        .font-controls {
+        .footer-nav.show {
             display: flex;
-            align-items: center;
-            gap: 5px;
         }
 
-        .font-size-display {
-            min-width: 40px;
+        .chapter-progress {
+            font-size: 14px;
+            min-width: 80px;
             text-align: center;
         }
 
-        /* 載入提示 */
+        /* 載入畫面 */
         .loading {
-            text-align: center;
-            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 60vh;
             color: #888;
         }
 
-        /* 檔案上傳區 */
-        .upload-area {
-            max-width: 600px;
-            margin: 100px auto;
-            padding: 40px;
-            text-align: center;
-            border: 3px dashed var(--border-color);
-            border-radius: 15px;
-            background: var(--chapter-bg);
-        }
-
-        .upload-area h2 {
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--button-bg);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
             margin-bottom: 20px;
         }
 
-        .upload-area p {
-            margin-bottom: 20px;
-            color: #888;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
-        .upload-area input[type="file"] {
+        /* 字體控制彈窗 */
+        .font-popup {
+            position: fixed;
+            top: 70px;
+            right: 10px;
+            background: var(--header-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 20px var(--shadow);
             display: none;
+            z-index: 101;
         }
 
-        .upload-label {
-            display: inline-block;
-            padding: 15px 30px;
-            background: var(--button-bg);
-            color: var(--button-text);
-            border-radius: 8px;
+        .font-popup.show {
+            display: block;
+        }
+
+        .font-popup label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .font-slider {
+            width: 150px;
+        }
+
+        /* 用戶選單 */
+        .user-menu {
+            position: relative;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s;
+            border: 2px solid var(--border-color);
         }
 
-        .upload-label:hover {
-            opacity: 0.85;
+        .user-dropdown {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background: var(--header-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 0;
+            min-width: 150px;
+            box-shadow: 0 4px 20px var(--shadow);
+            display: none;
+            z-index: 102;
+        }
+
+        .user-dropdown.show {
+            display: block;
+        }
+
+        .user-dropdown-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .user-dropdown-item:hover {
+            background: var(--bg-color);
         }
 
         /* RWD */
         @media (max-width: 600px) {
             .header h1 {
+                max-width: 120px;
                 font-size: 1rem;
             }
             
@@ -272,28 +376,59 @@
             }
             
             .sidebar {
-                width: 80%;
-                left: -80%;
+                width: 85%;
+                left: -85%;
+            }
+            
+            .btn {
+                padding: 6px 10px;
+                font-size: 13px;
+            }
+            
+            .btn-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
             }
         }
     </style>
 </head>
 <body>
+    <!-- 登入畫面 -->
+    <div class="login-screen" id="loginScreen">
+        <h2>📖 小說閱讀器</h2>
+        <p style="margin-bottom: 30px; color: #888;">請登入以同步閱讀進度</p>
+        <button class="login-btn" id="loginBtn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+            使用 Google 登入
+        </button>
+    </div>
+
     <!-- 頂部導航 -->
-    <header class="header">
-        <div style="display: flex; align-items: center; gap: 10px;">
+    <header class="header" id="header" style="display: none;">
+        <div class="header-left">
             <button class="btn btn-icon" id="menuBtn" title="章節目錄">☰</button>
             <h1 id="bookTitle">小說閱讀器</h1>
         </div>
         <div class="header-controls">
-            <div class="font-controls">
-                <button class="btn" id="fontSmaller">A-</button>
-                <span class="font-size-display" id="fontSizeDisplay">18</span>
-                <button class="btn" id="fontLarger">A+</button>
-            </div>
+            <button class="btn btn-icon" id="fontBtn" title="字體大小">A</button>
             <button class="btn btn-icon" id="themeToggle" title="開關燈">🌙</button>
+            <div class="user-menu">
+                <img class="user-avatar" id="userAvatar" src="" alt="頭像">
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-dropdown-item" id="logoutBtn">登出</div>
+                </div>
+            </div>
         </div>
     </header>
+
+    <!-- 字體控制 -->
+    <div class="font-popup" id="fontPopup">
+        <label>
+            字體大小: <span id="fontSizeDisplay">18</span>px
+            <input type="range" class="font-slider" id="fontSlider" min="14" max="28" value="18">
+        </label>
+    </div>
 
     <!-- 側邊目錄 -->
     <aside class="sidebar" id="sidebar">
@@ -308,16 +443,9 @@
 
     <!-- 主內容 -->
     <main class="main-content" id="mainContent">
-        <div class="upload-area" id="uploadArea">
-            <h2>📖 小說閱讀器</h2>
-            <p>請上傳小說 TXT 檔案（可多選）</p>
-            <label class="upload-label">
-                選擇檔案
-                <input type="file" id="fileInput" accept=".txt" multiple>
-            </label>
-            <p style="margin-top: 20px; font-size: 14px;">
-                或將整個資料夾的 TXT 檔案拖曳到此處
-            </p>
+        <div class="loading" id="loadingScreen">
+            <div class="loading-spinner"></div>
+            <p>正在載入小說...</p>
         </div>
 
         <article id="chapterView" style="display: none;">
@@ -327,26 +455,54 @@
     </main>
 
     <!-- 底部導航 -->
-    <nav class="footer-nav" id="footerNav" style="display: none;">
+    <nav class="footer-nav" id="footerNav">
         <button class="btn" id="prevChapter">⬅ 上一章</button>
-        <span id="chapterProgress">1 / 1</span>
+        <span class="chapter-progress" id="chapterProgress">- / -</span>
         <button class="btn" id="nextChapter">下一章 ➡</button>
     </nav>
 
-    <script>
-        // ============ 狀態管理 ============
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        
+        // Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyATCaOlYxkYTle1hPzYAcuXNlQHaAuO3-8",
+            authDomain: "case-scheduler-f752b.firebaseapp.com",
+            databaseURL: "https://case-scheduler-f752b-default-rtdb.firebaseio.com",
+            projectId: "case-scheduler-f752b",
+            storageBucket: "case-scheduler-f752b.firebasestorage.app",
+            messagingSenderId: "703006186929",
+            appId: "1:703006186929:web:57ac5b059678005455f190"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        
+        // ============ 狀態 ============
+        let currentUser = null;
         let chapters = [];
-        let currentChapterIndex = 0;
+        let totalChapters = 0;
+        let currentChapterIndex = 1;
         let fontSize = 18;
         let isDarkMode = false;
 
         // ============ DOM 元素 ============
+        const loginScreen = document.getElementById('loginScreen');
+        const loginBtn = document.getElementById('loginBtn');
+        const header = document.getElementById('header');
         const menuBtn = document.getElementById('menuBtn');
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
         const themeToggle = document.getElementById('themeToggle');
-        const fileInput = document.getElementById('fileInput');
-        const uploadArea = document.getElementById('uploadArea');
+        const fontBtn = document.getElementById('fontBtn');
+        const fontPopup = document.getElementById('fontPopup');
+        const fontSlider = document.getElementById('fontSlider');
+        const fontSizeDisplay = document.getElementById('fontSizeDisplay');
+        const mainContent = document.getElementById('mainContent');
         const chapterView = document.getElementById('chapterView');
         const chapterTitle = document.getElementById('chapterTitle');
         const chapterContent = document.getElementById('chapterContent');
@@ -355,30 +511,121 @@
         const prevBtn = document.getElementById('prevChapter');
         const nextBtn = document.getElementById('nextChapter');
         const chapterProgress = document.getElementById('chapterProgress');
-        const fontSmaller = document.getElementById('fontSmaller');
-        const fontLarger = document.getElementById('fontLarger');
-        const fontSizeDisplay = document.getElementById('fontSizeDisplay');
         const bookTitle = document.getElementById('bookTitle');
+        const loadingScreen = document.getElementById('loadingScreen');
+        const userAvatar = document.getElementById('userAvatar');
+        const userDropdown = document.getElementById('userDropdown');
+        const logoutBtn = document.getElementById('logoutBtn');
 
-        // ============ 開關燈功能 ============
+        // ============ 登入狀態監聽 ============
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                loginScreen.style.display = 'none';
+                header.style.display = 'flex';
+                mainContent.classList.add('show');
+                footerNav.classList.add('show');
+                
+                userAvatar.src = user.photoURL || '';
+                
+                // 載入小說
+                await loadNovel();
+            } else {
+                currentUser = null;
+                loginScreen.style.display = 'flex';
+                header.style.display = 'none';
+                mainContent.classList.remove('show');
+                footerNav.classList.remove('show');
+            }
+        });
+
+        // 登入
+        loginBtn.addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error('登入失敗:', error);
+                alert('登入失敗，請重試');
+            }
+        });
+
+        // 用戶選單
+        userAvatar.addEventListener('click', () => {
+            userDropdown.classList.toggle('show');
+        });
+
+        // 登出
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+            userDropdown.classList.remove('show');
+        });
+
+        // 點其他地方關閉選單
+        document.addEventListener('click', (e) => {
+            if (!userAvatar.contains(e.target) && !userDropdown.contains(e.target)) {
+                userDropdown.classList.remove('show');
+            }
+            if (!fontPopup.contains(e.target) && e.target !== fontBtn) {
+                fontPopup.classList.remove('show');
+            }
+        });
+
+        // ============ 載入小說 ============
+        async function loadNovel() {
+            loadSettings();
+            
+            // 載入小說資訊
+            const infoSnap = await get(ref(db, 'novel/info'));
+            if (infoSnap.exists()) {
+                const info = infoSnap.val();
+                bookTitle.textContent = info.title || '小說閱讀器';
+                totalChapters = info.totalChapters || 0;
+            }
+            
+            // 載入章節目錄
+            const chaptersSnap = await get(ref(db, 'novel/chapters'));
+            if (chaptersSnap.exists()) {
+                const data = chaptersSnap.val();
+                chapters = Object.keys(data).map(key => ({
+                    num: parseInt(key),
+                    title: data[key].title
+                })).sort((a, b) => a.num - b.num);
+                
+                totalChapters = chapters.length;
+                renderChapterList();
+            }
+            
+            // 載入閱讀進度
+            const progressSnap = await get(ref(db, 'novel/progress'));
+            if (progressSnap.exists()) {
+                currentChapterIndex = progressSnap.val().chapter || 1;
+            }
+            
+            // 顯示章節
+            if (totalChapters > 0) {
+                loadingScreen.style.display = 'none';
+                showChapter(currentChapterIndex);
+            } else {
+                loadingScreen.innerHTML = `
+                    <p>尚未上傳小說</p>
+                    <p style="margin-top: 20px;">
+                        <a href="novel-uploader.html" style="color: #4a90d9;">👉 前往上傳</a>
+                    </p>
+                `;
+            }
+        }
+
+        // ============ 開關燈 ============
         function toggleTheme() {
             isDarkMode = !isDarkMode;
             document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
             themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
-            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-        }
-
-        // 讀取儲存的主題
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
-            isDarkMode = true;
-            document.documentElement.setAttribute('data-theme', 'dark');
-            themeToggle.textContent = '☀️';
+            localStorage.setItem('novel-theme', isDarkMode ? 'dark' : 'light');
         }
 
         themeToggle.addEventListener('click', toggleTheme);
 
-        // ============ 側邊欄控制 ============
+        // ============ 側邊欄 ============
         function toggleSidebar() {
             sidebar.classList.toggle('open');
             overlay.classList.toggle('show');
@@ -387,135 +634,62 @@
         menuBtn.addEventListener('click', toggleSidebar);
         overlay.addEventListener('click', toggleSidebar);
 
-        // ============ 字體大小控制 ============
-        function updateFontSize(delta) {
-            fontSize = Math.max(12, Math.min(32, fontSize + delta));
+        // ============ 字體控制 ============
+        fontBtn.addEventListener('click', () => {
+            fontPopup.classList.toggle('show');
+        });
+
+        fontSlider.addEventListener('input', (e) => {
+            fontSize = parseInt(e.target.value);
+            fontSizeDisplay.textContent = fontSize;
             chapterContent.style.fontSize = fontSize + 'px';
-            fontSizeDisplay.textContent = fontSize;
-            localStorage.setItem('fontSize', fontSize);
-        }
-
-        // 讀取儲存的字體大小
-        const savedFontSize = localStorage.getItem('fontSize');
-        if (savedFontSize) {
-            fontSize = parseInt(savedFontSize);
-            fontSizeDisplay.textContent = fontSize;
-        }
-
-        fontSmaller.addEventListener('click', () => updateFontSize(-2));
-        fontLarger.addEventListener('click', () => updateFontSize(2));
-
-        // ============ 檔案處理 ============
-        fileInput.addEventListener('change', handleFiles);
-
-        // 拖曳上傳
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#4a90d9';
+            localStorage.setItem('novel-fontSize', fontSize);
         });
 
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.borderColor = '';
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '';
-            handleFiles({ target: { files: e.dataTransfer.files } });
-        });
-
-        async function handleFiles(e) {
-            const files = Array.from(e.target.files).filter(f => f.name.endsWith('.txt'));
+        // ============ 載入設定 ============
+        function loadSettings() {
+            const savedTheme = localStorage.getItem('novel-theme');
+            if (savedTheme === 'dark') {
+                isDarkMode = true;
+                document.documentElement.setAttribute('data-theme', 'dark');
+                themeToggle.textContent = '☀️';
+            }
             
-            if (files.length === 0) {
-                alert('請選擇 TXT 檔案');
-                return;
-            }
-
-            // 按檔名排序
-            files.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW', { numeric: true }));
-
-            chapters = [];
-
-            for (const file of files) {
-                const content = await readFile(file);
-                const lines = content.split('\n');
-                
-                // 取得標題（第一行或檔名）
-                let title = lines[0]?.trim() || file.name.replace('.txt', '');
-                
-                // 如果標題是分隔線，用檔名
-                if (title.startsWith('=')) {
-                    title = file.name.replace('.txt', '').replace(/^\d+_/, '');
-                }
-
-                // 找正文（跳過標題和分隔線）
-                let contentStart = 0;
-                for (let i = 0; i < Math.min(5, lines.length); i++) {
-                    if (lines[i].startsWith('=')) {
-                        contentStart = i + 1;
-                        break;
-                    }
-                }
-
-                const chapterContent = lines.slice(contentStart).join('\n').trim();
-
-                chapters.push({
-                    title: title,
-                    content: chapterContent
-                });
-            }
-
-            if (chapters.length > 0) {
-                // 更新書名
-                bookTitle.textContent = '凡人修仙傳';
-                
-                // 更新章節目錄
-                renderChapterList();
-                
-                // 顯示第一章
-                showChapter(0);
-                
-                // 隱藏上傳區，顯示閱讀區
-                uploadArea.style.display = 'none';
-                chapterView.style.display = 'block';
-                footerNav.style.display = 'flex';
+            const savedFontSize = localStorage.getItem('novel-fontSize');
+            if (savedFontSize) {
+                fontSize = parseInt(savedFontSize);
+                fontSlider.value = fontSize;
+                fontSizeDisplay.textContent = fontSize;
             }
         }
 
-        function readFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = reject;
-                reader.readAsText(file, 'UTF-8');
-            });
-        }
-
-        // ============ 章節顯示 ============
+        // ============ 章節目錄 ============
         function renderChapterList() {
-            chapterList.innerHTML = chapters.map((ch, idx) => 
-                `<li data-index="${idx}" class="${idx === currentChapterIndex ? 'active' : ''}">${ch.title}</li>`
+            chapterList.innerHTML = chapters.map(ch => 
+                `<li data-num="${ch.num}" class="${ch.num === currentChapterIndex ? 'active' : ''}">${ch.title}</li>`
             ).join('');
 
-            // 點擊事件
             chapterList.querySelectorAll('li').forEach(li => {
                 li.addEventListener('click', () => {
-                    showChapter(parseInt(li.dataset.index));
+                    showChapter(parseInt(li.dataset.num));
                     toggleSidebar();
                 });
             });
         }
 
-        function showChapter(index) {
-            if (index < 0 || index >= chapters.length) return;
+        // ============ 顯示章節 ============
+        async function showChapter(num) {
+            if (num < 1 || num > totalChapters) return;
 
-            currentChapterIndex = index;
-            const chapter = chapters[index];
-
+            currentChapterIndex = num;
+            
+            const snap = await get(ref(db, `novel/chapters/${num}`));
+            if (!snap.exists()) return;
+            
+            const chapter = snap.val();
+            
             chapterTitle.textContent = chapter.title;
             
-            // 將內容轉換成段落
             const paragraphs = chapter.content
                 .split(/\n\s*\n/)
                 .filter(p => p.trim())
@@ -524,29 +698,31 @@
             
             chapterContent.innerHTML = paragraphs || `<p>${chapter.content}</p>`;
             chapterContent.style.fontSize = fontSize + 'px';
+            
+            chapterView.style.display = 'block';
 
-            // 更新進度
-            chapterProgress.textContent = `${index + 1} / ${chapters.length}`;
+            chapterProgress.textContent = `${num} / ${totalChapters}`;
 
-            // 更新目錄高亮
-            chapterList.querySelectorAll('li').forEach((li, idx) => {
-                li.classList.toggle('active', idx === index);
+            chapterList.querySelectorAll('li').forEach(li => {
+                li.classList.toggle('active', parseInt(li.dataset.num) === num);
             });
 
-            // 捲動到頂部
             window.scrollTo(0, 0);
 
-            // 儲存閱讀進度
-            localStorage.setItem('lastChapter', index);
+            // 儲存進度
+            await set(ref(db, 'novel/progress'), {
+                chapter: num,
+                updatedAt: Date.now()
+            });
         }
 
-        // ============ 上下章切換 ============
+        // ============ 上下章 ============
         prevBtn.addEventListener('click', () => showChapter(currentChapterIndex - 1));
         nextBtn.addEventListener('click', () => showChapter(currentChapterIndex + 1));
 
         // 鍵盤快捷鍵
         document.addEventListener('keydown', (e) => {
-            if (chapters.length === 0) return;
+            if (totalChapters === 0) return;
             
             if (e.key === 'ArrowLeft') {
                 showChapter(currentChapterIndex - 1);
@@ -554,12 +730,6 @@
                 showChapter(currentChapterIndex + 1);
             }
         });
-
-        // ============ 讀取上次閱讀進度 ============
-        const lastChapter = localStorage.getItem('lastChapter');
-        if (lastChapter && chapters.length > 0) {
-            showChapter(parseInt(lastChapter));
-        }
     </script>
 </body>
 </html>
