@@ -648,11 +648,13 @@
             // 載入閱讀進度
             const progressSnap = await get(ref(db, 'novel/progress'));
             if (progressSnap.exists()) {
-                currentChapterIndex = progressSnap.val().chapter || 1;
+                currentChapterIndex = progressSnap.val().chapter || chapters[0]?.num || 1;
+            } else if (chapters.length > 0) {
+                currentChapterIndex = chapters[0].num;
             }
             
             // 顯示章節
-            if (totalChapters > 0) {
+            if (chapters.length > 0) {
                 loadingScreen.style.display = 'none';
                 showChapter(currentChapterIndex);
             } else {
@@ -745,7 +747,9 @@
 
         // ============ 顯示章節 ============
         async function showChapter(num) {
-            if (num < 1 || num > totalChapters) return;
+            // 檢查章節是否存在
+            const chapterExists = chapters.some(ch => ch.num === num);
+            if (!chapterExists) return;
 
             currentChapterIndex = num;
             
@@ -767,7 +771,9 @@
             
             chapterView.style.display = 'block';
 
-            chapterProgress.textContent = `${num} / ${totalChapters}`;
+            // 顯示進度（第幾章 / 共幾章）
+            const currentIndex = chapters.findIndex(ch => ch.num === num) + 1;
+            chapterProgress.textContent = `${currentIndex} / ${totalChapters}`;
 
             chapterList.querySelectorAll('li').forEach(li => {
                 li.classList.toggle('active', parseInt(li.dataset.num) === num);
@@ -783,17 +789,31 @@
         }
 
         // ============ 上下章 ============
-        prevBtn.addEventListener('click', () => showChapter(currentChapterIndex - 1));
-        nextBtn.addEventListener('click', () => showChapter(currentChapterIndex + 1));
+        function goToPrevChapter() {
+            const currentIndex = chapters.findIndex(ch => ch.num === currentChapterIndex);
+            if (currentIndex > 0) {
+                showChapter(chapters[currentIndex - 1].num);
+            }
+        }
+
+        function goToNextChapter() {
+            const currentIndex = chapters.findIndex(ch => ch.num === currentChapterIndex);
+            if (currentIndex < chapters.length - 1) {
+                showChapter(chapters[currentIndex + 1].num);
+            }
+        }
+
+        prevBtn.addEventListener('click', goToPrevChapter);
+        nextBtn.addEventListener('click', goToNextChapter);
 
         // 鍵盤快捷鍵
         document.addEventListener('keydown', (e) => {
-            if (totalChapters === 0) return;
+            if (chapters.length === 0) return;
             
             if (e.key === 'ArrowLeft') {
-                showChapter(currentChapterIndex - 1);
+                goToPrevChapter();
             } else if (e.key === 'ArrowRight') {
-                showChapter(currentChapterIndex + 1);
+                goToNextChapter();
             }
         });
 
