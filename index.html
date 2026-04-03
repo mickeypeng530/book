@@ -401,6 +401,9 @@
             padding: 10px 20px;
             cursor: pointer;
             transition: background 0.2s;
+            display: block;
+            text-decoration: none;
+            color: var(--text-color);
         }
 
         .user-dropdown-item:hover {
@@ -459,7 +462,8 @@
             <div class="user-menu">
                 <img class="user-avatar" id="userAvatar" src="" alt="頭像">
                 <div class="user-dropdown" id="userDropdown">
-                    <div class="user-dropdown-item" id="logoutBtn">登出</div>
+                    <a class="user-dropdown-item" href="novel-uploader.html">📤 上傳章節</a>
+                    <div class="user-dropdown-item" id="logoutBtn">🚪 登出</div>
                 </div>
             </div>
         </div>
