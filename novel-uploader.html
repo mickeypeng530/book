@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小說上傳工具</title>
+    <title>小說管理工具</title>
     <style>
         * {
             margin: 0;
@@ -16,24 +16,24 @@
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
             color: #fff;
-            padding: 40px 20px;
+            padding: 20px;
         }
         
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
         }
         
         h1 {
             text-align: center;
             margin-bottom: 10px;
-            font-size: 2rem;
+            font-size: 1.8rem;
         }
         
         .subtitle {
             text-align: center;
             color: #888;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
         
         /* 登入區 */
@@ -66,105 +66,151 @@
             height: 24px;
         }
         
+        /* 頂部用戶區 */
+        .user-bar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .user-bar.show {
+            display: flex;
+        }
+        
         .user-info {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 30px;
+            gap: 12px;
         }
         
         .user-info img {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
         }
         
-        .logout-btn {
-            padding: 8px 16px;
-            background: transparent;
-            color: #aaa;
-            border: 1px solid #555;
-            border-radius: 6px;
-            cursor: pointer;
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: #4a90d9;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
             font-size: 14px;
-        }
-        
-        .logout-btn:hover {
-            background: rgba(255,255,255,0.1);
-        }
-        
-        .upload-area {
-            background: rgba(255,255,255,0.1);
-            border: 3px dashed rgba(255,255,255,0.3);
-            border-radius: 20px;
-            padding: 60px 40px;
-            text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn:hover {
+            background: #3a7bc8;
+        }
+        
+        .btn-green {
+            background: #4ade80;
+        }
+        
+        .btn-green:hover {
+            background: #22c55e;
+        }
+        
+        .btn-red {
+            background: #f87171;
+        }
+        
+        .btn-red:hover {
+            background: #ef4444;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #555;
+            color: #aaa;
+        }
+        
+        .btn-outline:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        /* 分頁標籤 */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.05);
+            border: none;
+            border-radius: 8px;
+            color: #888;
+            cursor: pointer;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        
+        .tab.active {
+            background: #4a90d9;
+            color: #fff;
+        }
+        
+        .tab-content {
             display: none;
         }
         
-        .upload-area.show {
+        .tab-content.active {
             display: block;
         }
         
-        .upload-area:hover {
+        /* 上傳區 */
+        .upload-area {
+            background: rgba(255,255,255,0.05);
+            border: 3px dashed rgba(255,255,255,0.2);
+            border-radius: 15px;
+            padding: 50px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover, .upload-area.dragover {
             border-color: #4a90d9;
             background: rgba(74, 144, 217, 0.1);
         }
         
-        .upload-area.dragover {
-            border-color: #4a90d9;
-            background: rgba(74, 144, 217, 0.2);
-        }
-        
         .upload-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-        }
-        
-        .upload-area h2 {
-            margin-bottom: 10px;
-        }
-        
-        .upload-area p {
-            color: #aaa;
+            font-size: 3rem;
+            margin-bottom: 15px;
         }
         
         input[type="file"] {
             display: none;
         }
         
-        .btn {
-            display: inline-block;
-            padding: 15px 40px;
-            background: #4a90d9;
-            color: #fff;
-            border: none;
-            border-radius: 10px;
-            font-size: 18px;
-            cursor: pointer;
-            margin-top: 20px;
-            transition: all 0.2s;
-        }
-        
-        .btn:hover {
-            background: #3a7bc8;
-            transform: translateY(-2px);
-        }
-        
+        /* 進度區 */
         .progress-section {
-            margin-top: 40px;
+            margin-top: 20px;
             display: none;
         }
         
         .progress-bar {
             background: rgba(255,255,255,0.1);
             border-radius: 10px;
-            height: 30px;
+            height: 24px;
             overflow: hidden;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         
         .progress-fill {
@@ -175,161 +221,269 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 12px;
             font-weight: bold;
         }
         
         .status {
             text-align: center;
             color: #aaa;
+            font-size: 14px;
         }
         
-        .file-list {
-            margin-top: 30px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .file-item {
+        /* 章節管理區 */
+        .chapter-manager {
             background: rgba(255,255,255,0.05);
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin-bottom: 8px;
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        .manager-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        
-        .file-item.success {
-            border-left: 4px solid #4ade80;
-        }
-        
-        .file-item.error {
-            border-left: 4px solid #f87171;
-        }
-        
-        .file-item.pending {
-            border-left: 4px solid #fbbf24;
-        }
-        
-        .success-message {
-            text-align: center;
-            margin-top: 40px;
-            padding: 30px;
-            background: rgba(74, 222, 128, 0.1);
-            border-radius: 15px;
-            display: none;
-        }
-        
-        .success-message h2 {
-            color: #4ade80;
             margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
-        .reader-link {
-            color: #4a90d9;
-            text-decoration: none;
-            font-size: 1.2rem;
-        }
-        
-        .reader-link:hover {
-            text-decoration: underline;
-        }
-        
-        /* 已上傳章節區 */
-        .uploaded-section {
-            margin-top: 30px;
-            padding: 25px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .uploaded-section h3 {
-            margin-bottom: 15px;
+        .manager-header h3 {
             font-size: 1.1rem;
         }
         
-        .uploaded-summary {
-            color: #aaa;
-            line-height: 1.8;
-        }
-        
-        .uploaded-summary .chapter-range {
+        .chapter-stats {
             color: #4ade80;
+            font-size: 14px;
+        }
+        
+        .chapter-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .chapter-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: background 0.2s;
+        }
+        
+        .chapter-item:hover {
+            background: rgba(255,255,255,0.08);
+        }
+        
+        .chapter-title {
+            flex: 1;
+            font-size: 14px;
+            color: #ccc;
+        }
+        
+        .chapter-num {
+            color: #4a90d9;
             font-weight: bold;
+            margin-right: 10px;
+            min-width: 60px;
         }
         
-        .uploaded-summary .chapter-item {
-            padding: 5px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+        .delete-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid #f87171;
+            color: #f87171;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
         }
         
-        .uploaded-summary .ellipsis {
-            color: #666;
+        .delete-btn:hover {
+            background: #f87171;
+            color: #fff;
+        }
+        
+        .empty-state {
             text-align: center;
-            padding: 5px 0;
+            padding: 40px;
+            color: #666;
+        }
+        
+        /* 確認彈窗 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .modal-content h3 {
+            margin-bottom: 15px;
+            color: #f87171;
+        }
+        
+        .modal-content p {
+            margin-bottom: 20px;
+            color: #aaa;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        /* 載入中 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #4a90d9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* RWD */
+        @media (max-width: 600px) {
+            .user-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                flex: 1;
+                text-align: center;
+            }
+            
+            .manager-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📚 小說上傳工具</h1>
-        <p class="subtitle">將 TXT 檔案上傳到 Firebase，即可跨裝置閱讀</p>
+        <h1>📚 小說管理工具</h1>
+        <p class="subtitle">上傳、管理你的小說章節</p>
         
         <!-- 登入區 -->
         <div class="login-area" id="loginArea">
-            <p style="margin-bottom: 30px; color: #aaa;">請先登入以上傳小說</p>
+            <p style="margin-bottom: 30px; color: #aaa;">請先登入</p>
             <button class="login-btn" id="loginBtn">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
                 使用 Google 登入
             </button>
         </div>
         
-        <!-- 用戶資訊 -->
-        <div class="user-info" id="userInfo" style="display: none;">
-            <img id="userPhoto" src="" alt="頭像">
-            <span id="userName"></span>
-            <a href="index.html" class="btn" style="background: #4ade80; text-decoration: none;">📖 前往閱讀</a>
-            <button class="logout-btn" id="logoutBtn">登出</button>
-        </div>
-        
-        <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">📁</div>
-            <h2>選擇或拖曳 TXT 檔案</h2>
-            <p>支援多選，會自動按檔名排序</p>
-            <label class="btn">
-                選擇檔案
-                <input type="file" id="fileInput" accept=".txt" multiple>
-            </label>
-        </div>
-        
-        <!-- 已上傳章節 -->
-        <div class="uploaded-section" id="uploadedSection" style="display: none;">
-            <h3>📚 已上傳章節</h3>
-            <div class="uploaded-summary" id="uploadedSummary"></div>
-        </div>
-        
-        <div class="progress-section" id="progressSection">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+        <!-- 用戶工具列 -->
+        <div class="user-bar" id="userBar">
+            <div class="user-info">
+                <img id="userPhoto" src="" alt="頭像">
+                <span id="userName"></span>
             </div>
-            <p class="status" id="statusText">準備上傳...</p>
-            
-            <div class="file-list" id="fileList"></div>
+            <div class="user-actions">
+                <a href="index.html" class="btn btn-green">📖 前往閱讀</a>
+                <button class="btn btn-outline" id="logoutBtn">登出</button>
+            </div>
         </div>
         
-        <div class="success-message" id="successMessage">
-            <h2>✅ 上傳完成！</h2>
-            <p>共上傳 <span id="totalChapters">0</span> 章</p>
-            <p style="margin-top: 20px;">
-                <a href="index.html" class="reader-link">👉 前往閱讀器開始閱讀</a>
-            </p>
+        <!-- 主要內容 -->
+        <div id="mainContent" style="display: none;">
+            <!-- 分頁 -->
+            <div class="tabs">
+                <button class="tab active" data-tab="upload">📤 上傳章節</button>
+                <button class="tab" data-tab="manage">📋 管理章節</button>
+            </div>
+            
+            <!-- 上傳分頁 -->
+            <div class="tab-content active" id="tab-upload">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <h2>選擇或拖曳 TXT 檔案</h2>
+                    <p style="color: #888; margin-top: 10px;">會自動從標題提取章節號</p>
+                    <label class="btn" style="margin-top: 20px;">
+                        選擇檔案
+                        <input type="file" id="fileInput" accept=".txt" multiple>
+                    </label>
+                </div>
+                
+                <div class="progress-section" id="progressSection">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+                    </div>
+                    <p class="status" id="statusText">準備上傳...</p>
+                </div>
+            </div>
+            
+            <!-- 管理分頁 -->
+            <div class="tab-content" id="tab-manage">
+                <div class="chapter-manager">
+                    <div class="manager-header">
+                        <h3>已上傳章節</h3>
+                        <span class="chapter-stats" id="chapterStats">載入中...</span>
+                    </div>
+                    <div class="chapter-list" id="chapterList">
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <p>載入中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 刪除確認彈窗 -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <h3>⚠️ 確認刪除</h3>
+            <p id="deleteMessage">確定要刪除這個章節嗎？</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" id="cancelDelete">取消</button>
+                <button class="btn btn-red" id="confirmDelete">刪除</button>
+            </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, set, get, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         
         // Firebase 設定
@@ -348,101 +502,48 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
         
+        // 狀態
+        let chaptersData = {};
+        let deleteTarget = null;
+        
         // DOM 元素
         const loginArea = document.getElementById('loginArea');
         const loginBtn = document.getElementById('loginBtn');
-        const userInfo = document.getElementById('userInfo');
+        const userBar = document.getElementById('userBar');
         const userPhoto = document.getElementById('userPhoto');
         const userName = document.getElementById('userName');
         const logoutBtn = document.getElementById('logoutBtn');
+        const mainContent = document.getElementById('mainContent');
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const progressSection = document.getElementById('progressSection');
         const progressFill = document.getElementById('progressFill');
         const statusText = document.getElementById('statusText');
-        const fileList = document.getElementById('fileList');
-        const successMessage = document.getElementById('successMessage');
-        const totalChapters = document.getElementById('totalChapters');
-        const uploadedSection = document.getElementById('uploadedSection');
-        const uploadedSummary = document.getElementById('uploadedSummary');
+        const chapterList = document.getElementById('chapterList');
+        const chapterStats = document.getElementById('chapterStats');
+        const deleteModal = document.getElementById('deleteModal');
+        const deleteMessage = document.getElementById('deleteMessage');
+        const cancelDelete = document.getElementById('cancelDelete');
+        const confirmDelete = document.getElementById('confirmDelete');
         
-        // 載入已上傳章節
-        async function loadUploadedChapters() {
-            try {
-                const snapshot = await get(ref(db, 'novel/chapters'));
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    const chapters = Object.keys(data)
-                        .map(key => ({
-                            num: parseInt(key),
-                            title: data[key].title
-                        }))
-                        .sort((a, b) => a.num - b.num);
-                    
-                    if (chapters.length > 0) {
-                        displayUploadedChapters(chapters);
-                    }
-                }
-            } catch (error) {
-                console.error('載入章節失敗:', error);
-            }
-        }
-        
-        function displayUploadedChapters(chapters) {
-            uploadedSection.style.display = 'block';
-            
-            const total = chapters.length;
-            const first = chapters[0];
-            const last = chapters[chapters.length - 1];
-            
-            let html = `<p>共 <span class="chapter-range">${total}</span> 章</p>`;
-            
-            if (total <= 6) {
-                // 少於6章，全部顯示
-                html += chapters.map(ch => 
-                    `<div class="chapter-item">${ch.num}. ${ch.title}</div>`
-                ).join('');
-            } else {
-                // 顯示前3章
-                html += chapters.slice(0, 3).map(ch => 
-                    `<div class="chapter-item">${ch.num}. ${ch.title}</div>`
-                ).join('');
-                
-                // 省略號
-                html += `<div class="ellipsis">⋮ (${total - 6} 章省略)</div>`;
-                
-                // 顯示後3章
-                html += chapters.slice(-3).map(ch => 
-                    `<div class="chapter-item">${ch.num}. ${ch.title}</div>`
-                ).join('');
-            }
-            
-            uploadedSummary.innerHTML = html;
-        }
-        
-        // 監聽登入狀態
+        // ============ 登入狀態 ============
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // 已登入
                 loginArea.style.display = 'none';
-                userInfo.style.display = 'flex';
-                uploadArea.classList.add('show');
+                userBar.classList.add('show');
+                mainContent.style.display = 'block';
                 
                 userPhoto.src = user.photoURL || '';
                 userName.textContent = user.displayName || user.email;
                 
-                // 載入已上傳章節
-                loadUploadedChapters();
+                loadChapters();
             } else {
-                // 未登入
                 loginArea.style.display = 'block';
-                userInfo.style.display = 'none';
-                uploadArea.classList.remove('show');
-                uploadedSection.style.display = 'none';
+                userBar.classList.remove('show');
+                mainContent.style.display = 'none';
             }
         });
         
-        // 登入
         loginBtn.addEventListener('click', async () => {
             try {
                 await signInWithPopup(auth, provider);
@@ -452,12 +553,101 @@
             }
         });
         
-        // 登出
         logoutBtn.addEventListener('click', async () => {
             await signOut(auth);
         });
         
-        // 拖曳上傳
+        // ============ 分頁切換 ============
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+                
+                if (tab.dataset.tab === 'manage') {
+                    loadChapters();
+                }
+            });
+        });
+        
+        // ============ 載入章節 ============
+        async function loadChapters() {
+            try {
+                const snapshot = await get(ref(db, 'novel/chapters'));
+                if (snapshot.exists()) {
+                    chaptersData = snapshot.val();
+                    displayChapters();
+                } else {
+                    chaptersData = {};
+                    chapterList.innerHTML = '<div class="empty-state">尚未上傳任何章節</div>';
+                    chapterStats.textContent = '共 0 章';
+                }
+            } catch (error) {
+                console.error('載入失敗:', error);
+                chapterList.innerHTML = '<div class="empty-state">載入失敗</div>';
+            }
+        }
+        
+        function displayChapters() {
+            const chapters = Object.keys(chaptersData)
+                .map(key => ({
+                    num: parseInt(key),
+                    title: chaptersData[key].title
+                }))
+                .sort((a, b) => a.num - b.num);
+            
+            if (chapters.length === 0) {
+                chapterList.innerHTML = '<div class="empty-state">尚未上傳任何章節</div>';
+                chapterStats.textContent = '共 0 章';
+                return;
+            }
+            
+            const first = chapters[0].num;
+            const last = chapters[chapters.length - 1].num;
+            chapterStats.textContent = `共 ${chapters.length} 章 (第${first}章 ~ 第${last}章)`;
+            
+            chapterList.innerHTML = chapters.map(ch => `
+                <div class="chapter-item">
+                    <span class="chapter-num">#${ch.num}</span>
+                    <span class="chapter-title">${ch.title}</span>
+                    <button class="delete-btn" data-num="${ch.num}" data-title="${ch.title}">刪除</button>
+                </div>
+            `).join('');
+            
+            // 綁定刪除按鈕
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    deleteTarget = btn.dataset.num;
+                    deleteMessage.textContent = `確定要刪除「${btn.dataset.title}」嗎？`;
+                    deleteModal.classList.add('show');
+                });
+            });
+        }
+        
+        // ============ 刪除章節 ============
+        cancelDelete.addEventListener('click', () => {
+            deleteModal.classList.remove('show');
+            deleteTarget = null;
+        });
+        
+        confirmDelete.addEventListener('click', async () => {
+            if (!deleteTarget) return;
+            
+            try {
+                await remove(ref(db, `novel/chapters/${deleteTarget}`));
+                deleteModal.classList.remove('show');
+                deleteTarget = null;
+                await loadChapters();
+                await updateNovelInfo();
+            } catch (error) {
+                console.error('刪除失敗:', error);
+                alert('刪除失敗');
+            }
+        });
+        
+        // ============ 上傳功能 ============
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
@@ -485,72 +675,71 @@
                 return;
             }
             
-            // 按檔名排序
-            files.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW', { numeric: true }));
-            
-            // 顯示進度區
             progressSection.style.display = 'block';
-            uploadArea.style.display = 'none';
-            
-            // 初始化檔案列表
-            fileList.innerHTML = files.map((f, i) => `
-                <div class="file-item pending" id="file-${i}">
-                    <span>${f.name}</span>
-                    <span>等待中...</span>
-                </div>
-            `).join('');
             
             let uploaded = 0;
-            const chapters = [];
+            let failed = 0;
             
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
-                const fileItem = document.getElementById(`file-${i}`);
                 
                 try {
                     statusText.textContent = `正在處理: ${file.name}`;
                     
                     const content = await readFile(file);
-                    const { title, text } = parseChapter(content, file.name);
+                    const { chapterNum, title, text } = parseChapter(content, file.name);
+                    
+                    if (!chapterNum) {
+                        console.warn('無法提取章節號:', file.name);
+                        failed++;
+                        continue;
+                    }
                     
                     // 上傳到 Firebase
-                    const chapterNum = i + 1;
                     await set(ref(db, `novel/chapters/${chapterNum}`), {
                         title: title,
                         content: text,
                         uploadedAt: Date.now()
                     });
                     
-                    chapters.push({ num: chapterNum, title });
-                    
                     uploaded++;
-                    const progress = Math.round((uploaded / files.length) * 100);
-                    progressFill.style.width = progress + '%';
-                    progressFill.textContent = progress + '%';
-                    
-                    fileItem.classList.remove('pending');
-                    fileItem.classList.add('success');
-                    fileItem.querySelector('span:last-child').textContent = '✓ 完成';
                     
                 } catch (error) {
                     console.error('上傳失敗:', file.name, error);
-                    fileItem.classList.remove('pending');
-                    fileItem.classList.add('error');
-                    fileItem.querySelector('span:last-child').textContent = '✗ 失敗';
+                    failed++;
                 }
+                
+                const progress = Math.round(((i + 1) / files.length) * 100);
+                progressFill.style.width = progress + '%';
+                progressFill.textContent = progress + '%';
             }
             
-            // 儲存章節目錄
+            // 更新小說資訊
+            await updateNovelInfo();
+            
+            statusText.textContent = `完成！成功 ${uploaded} 章` + (failed > 0 ? `，失敗 ${failed} 章` : '');
+            
+            // 重新載入章節列表
+            await loadChapters();
+            
+            // 3秒後重置上傳區
+            setTimeout(() => {
+                progressSection.style.display = 'none';
+                progressFill.style.width = '0%';
+                progressFill.textContent = '0%';
+                fileInput.value = '';
+            }, 3000);
+        }
+        
+        async function updateNovelInfo() {
+            const snapshot = await get(ref(db, 'novel/chapters'));
+            const total = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+            
             await set(ref(db, 'novel/info'), {
                 title: '凡人修仙傳',
-                totalChapters: chapters.length,
+                totalChapters: total,
                 updatedAt: Date.now()
             });
-            
-            // 顯示完成訊息
-            statusText.textContent = '上傳完成！';
-            totalChapters.textContent = uploaded;
-            successMessage.style.display = 'block';
         }
         
         function readFile(file) {
@@ -564,16 +753,12 @@
         
         function parseChapter(content, filename) {
             const lines = content.split('\n');
+            let title = lines[0]?.trim() || '';
             
-            // 取得標題
-            let title = lines[0]?.trim() || filename.replace('.txt', '');
+            // 提取章節號
+            const chapterNum = extractChapterNumber(title) || extractChapterNumber(filename);
             
-            // 如果標題是分隔線，用檔名
-            if (title.startsWith('=')) {
-                title = filename.replace('.txt', '').replace(/^\d+_/, '');
-            }
-            
-            // 找正文（跳過標題和分隔線）
+            // 找正文
             let contentStart = 0;
             for (let i = 0; i < Math.min(5, lines.length); i++) {
                 if (lines[i].startsWith('=')) {
@@ -584,7 +769,57 @@
             
             const text = lines.slice(contentStart).join('\n').trim();
             
-            return { title, text };
+            return { chapterNum, title, text };
+        }
+        
+        function extractChapterNumber(text) {
+            // 中文數字對照
+            const cnNums = {
+                '零': 0, '一': 1, '二': 2, '三': 3, '四': 4,
+                '五': 5, '六': 6, '七': 7, '八': 8, '九': 9,
+                '十': 10, '百': 100, '千': 1000, '兩': 2
+            };
+            
+            // 嘗試匹配「第XXX章」
+            const match = text.match(/第([零一二三四五六七八九十百千兩\d]+)章/);
+            if (!match) return null;
+            
+            const numStr = match[1];
+            
+            // 如果是阿拉伯數字
+            if (/^\d+$/.test(numStr)) {
+                return parseInt(numStr);
+            }
+            
+            // 轉換中文數字
+            return chineseToNumber(numStr, cnNums);
+        }
+        
+        function chineseToNumber(str, cnNums) {
+            let result = 0;
+            let temp = 0;
+            let prevUnit = 1;
+            
+            for (let i = 0; i < str.length; i++) {
+                const char = str[i];
+                const num = cnNums[char];
+                
+                if (num === undefined) continue;
+                
+                if (num >= 10) {
+                    // 是單位（十、百、千）
+                    if (temp === 0) temp = 1;
+                    temp *= num;
+                    result += temp;
+                    temp = 0;
+                } else {
+                    // 是數字
+                    temp = num;
+                }
+            }
+            
+            result += temp;
+            return result || null;
         }
     </script>
 </body>
