@@ -234,6 +234,41 @@
         .reader-link:hover {
             text-decoration: underline;
         }
+        
+        /* 已上傳章節區 */
+        .uploaded-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .uploaded-section h3 {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .uploaded-summary {
+            color: #aaa;
+            line-height: 1.8;
+        }
+        
+        .uploaded-summary .chapter-range {
+            color: #4ade80;
+            font-weight: bold;
+        }
+        
+        .uploaded-summary .chapter-item {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .uploaded-summary .ellipsis {
+            color: #666;
+            text-align: center;
+            padding: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -268,6 +303,12 @@
             </label>
         </div>
         
+        <!-- 已上傳章節 -->
+        <div class="uploaded-section" id="uploadedSection" style="display: none;">
+            <h3>📚 已上傳章節</h3>
+            <div class="uploaded-summary" id="uploadedSummary"></div>
+        </div>
+        
         <div class="progress-section" id="progressSection">
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
@@ -288,7 +329,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         
         // Firebase 設定
@@ -322,6 +363,62 @@
         const fileList = document.getElementById('fileList');
         const successMessage = document.getElementById('successMessage');
         const totalChapters = document.getElementById('totalChapters');
+        const uploadedSection = document.getElementById('uploadedSection');
+        const uploadedSummary = document.getElementById('uploadedSummary');
+        
+        // 載入已上傳章節
+        async function loadUploadedChapters() {
+            try {
+                const snapshot = await get(ref(db, 'novel/chapters'));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const chapters = Object.keys(data)
+                        .map(key => ({
+                            num: parseInt(key),
+                            title: data[key].title
+                        }))
+                        .sort((a, b) => a.num - b.num);
+                    
+                    if (chapters.length > 0) {
+                        displayUploadedChapters(chapters);
+                    }
+                }
+            } catch (error) {
+                console.error('載入章節失敗:', error);
+            }
+        }
+        
+        function displayUploadedChapters(chapters) {
+            uploadedSection.style.display = 'block';
+            
+            const total = chapters.length;
+            const first = chapters[0];
+            const last = chapters[chapters.length - 1];
+            
+            let html = `<p>共 <span class="chapter-range">${total}</span> 章</p>`;
+            
+            if (total <= 6) {
+                // 少於6章，全部顯示
+                html += chapters.map(ch => 
+                    `<div class="chapter-item">${ch.num}. ${ch.title}</div>`
+                ).join('');
+            } else {
+                // 顯示前3章
+                html += chapters.slice(0, 3).map(ch => 
+                    `<div class="chapter-item">${ch.num}. ${ch.title}</div>`
+                ).join('');
+                
+                // 省略號
+                html += `<div class="ellipsis">⋮ (${total - 6} 章省略)</div>`;
+                
+                // 顯示後3章
+                html += chapters.slice(-3).map(ch => 
+                    `<div class="chapter-item">${ch.num}. ${ch.title}</div>`
+                ).join('');
+            }
+            
+            uploadedSummary.innerHTML = html;
+        }
         
         // 監聽登入狀態
         onAuthStateChanged(auth, (user) => {
@@ -333,11 +430,15 @@
                 
                 userPhoto.src = user.photoURL || '';
                 userName.textContent = user.displayName || user.email;
+                
+                // 載入已上傳章節
+                loadUploadedChapters();
             } else {
                 // 未登入
                 loginArea.style.display = 'block';
                 userInfo.style.display = 'none';
                 uploadArea.classList.remove('show');
+                uploadedSection.style.display = 'none';
             }
         });
         
