@@ -39,7 +39,7 @@
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            line-height: 1.8;
+            line-height: 1.6;
             transition: all 0.3s ease;
         }
 
@@ -222,7 +222,7 @@
 
         /* 主要內容區 */
         .main-content {
-            max-width: 97%;
+            max-width: 98%;
             margin: 0 auto;
             padding: 80px 20px 120px;
             display: none;
@@ -243,7 +243,7 @@
 
         @media (min-width: 1440px) {
             .main-content {
-                max-width: 60%;
+                max-width: 70%;
             }
         }
 
@@ -1000,7 +1000,7 @@
             
             function doScroll() {
                 // 每次捲動時即時計算，這樣調整參數會立即生效
-                const lineHeight = fontSize * 1.8;
+                const lineHeight = fontSize * 1.6;
                 const scrollDistance = lineHeight * scrollLines;
                 
                 smoothScrollBy(scrollDistance, scrollSpeed * 1000);
@@ -1190,6 +1190,7 @@
         // ============ 滑動隱藏工具列 ============
         let lastScrollY = 0;
         let ticking = false;
+        const scrollThreshold = 50; // 要滑超過 50px 才觸發
 
         function handleScroll() {
             // 自動捲動時不處理工具列隱藏
@@ -1200,18 +1201,20 @@
             }
             
             const currentScrollY = window.scrollY;
+            const scrollDiff = currentScrollY - lastScrollY;
             
-            if (currentScrollY > lastScrollY && currentScrollY > 100) {
-                // 往下滑 - 隱藏工具列
+            if (scrollDiff > scrollThreshold && currentScrollY > 100) {
+                // 往下滑超過門檻 - 隱藏工具列
                 header.classList.add('hidden');
                 footerNav.classList.add('hidden');
-            } else {
-                // 往上滑 - 顯示工具列
+                lastScrollY = currentScrollY;
+            } else if (scrollDiff < -scrollThreshold) {
+                // 往上滑超過門檻 - 顯示工具列
                 header.classList.remove('hidden');
                 footerNav.classList.remove('hidden');
+                lastScrollY = currentScrollY;
             }
             
-            lastScrollY = currentScrollY;
             ticking = false;
         }
 
