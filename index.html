@@ -618,23 +618,25 @@
                 <button class="scroll-opt" data-interval="5">5秒</button>
                 <button class="scroll-opt" data-interval="8">8秒</button>
                 <button class="scroll-opt" data-interval="10">10秒</button>
+                <button class="scroll-opt" data-interval="15">15秒</button>
             </div>
         </div>
         <div class="popup-section">
-            <label>🚀 捲動速度</label>
+            <label>🚀 動畫速度</label>
             <div class="scroll-options">
-                <button class="scroll-opt" data-speed="0.3">快</button>
-                <button class="scroll-opt" data-speed="0.5">中</button>
-                <button class="scroll-opt" data-speed="0.7">慢</button>
+                <button class="scroll-opt" data-speed="0.4">0.4秒</button>
+                <button class="scroll-opt" data-speed="0.6">0.6秒</button>
+                <button class="scroll-opt" data-speed="0.8">0.8秒</button>
+                <button class="scroll-opt" data-speed="1">1秒</button>
             </div>
         </div>
         <div class="popup-section">
             <label>📏 每次幾行</label>
             <div class="scroll-options">
-                <button class="scroll-opt" data-lines="1">1行</button>
                 <button class="scroll-opt" data-lines="3">3行</button>
                 <button class="scroll-opt" data-lines="5">5行</button>
                 <button class="scroll-opt" data-lines="7">7行</button>
+                <button class="scroll-opt" data-lines="11">11行</button>
             </div>
         </div>
         <button class="scroll-start-btn" id="scrollStartBtn">▶️ 開始自動捲動</button>
@@ -706,9 +708,9 @@
         
         // 自動捲動狀態
         let autoScrollInterval = null;
-        let scrollIntervalTime = 2;  // 秒
-        let scrollSpeed = 0.5;       // 秒
-        let scrollLines = 3;         // 行
+        let scrollIntervalTime = 8;  // 秒
+        let scrollSpeed = 0.6;       // 秒
+        let scrollLines = 5;         // 行
 
         // ============ DOM 元素 ============
         const loginScreen = document.getElementById('loginScreen');
