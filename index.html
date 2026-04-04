@@ -624,10 +624,11 @@
         <div class="popup-section">
             <label>🚀 動畫速度</label>
             <div class="scroll-options">
-                <button class="scroll-opt" data-speed="0.4">0.4秒</button>
-                <button class="scroll-opt" data-speed="0.6">0.6秒</button>
-                <button class="scroll-opt" data-speed="0.8">0.8秒</button>
+                <button class="scroll-opt" data-speed="0.5">0.5秒</button>
                 <button class="scroll-opt" data-speed="1">1秒</button>
+                <button class="scroll-opt" data-speed="1.5">1.5秒</button>
+                <button class="scroll-opt" data-speed="2">2秒</button>
+                <button class="scroll-opt" data-speed="2.5">2.5秒</button>
             </div>
         </div>
         <div class="popup-section">
@@ -709,7 +710,7 @@
         // 自動捲動狀態
         let autoScrollInterval = null;
         let scrollIntervalTime = 8;  // 秒
-        let scrollSpeed = 0.6;       // 秒
+        let scrollSpeed = 1;         // 秒
         let scrollLines = 5;         // 行
 
         // ============ DOM 元素 ============
@@ -948,6 +949,29 @@
         });
 
         // 開始/停止自動捲動
+        function smoothScrollBy(distance, duration) {
+            const start = window.scrollY;
+            const startTime = performance.now();
+            
+            function animate(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // easeInOutCubic 緩動函數
+                const easeProgress = progress < 0.5
+                    ? 4 * progress * progress * progress
+                    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+                
+                window.scrollTo(0, start + distance * easeProgress);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+
         function startAutoScroll() {
             if (autoScrollInterval) return;
             
@@ -955,10 +979,8 @@
             const scrollDistance = lineHeight * scrollLines;
             
             autoScrollInterval = setInterval(() => {
-                window.scrollBy({
-                    top: scrollDistance,
-                    behavior: 'smooth'
-                });
+                // 使用自訂動畫，duration = scrollSpeed 秒
+                smoothScrollBy(scrollDistance, scrollSpeed * 1000);
                 
                 // 檢查是否到底部
                 if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight - 100) {
