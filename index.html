@@ -39,8 +39,14 @@
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            line-height: 1.6;
+            line-height: 1.7;
             transition: all 0.3s ease;
+        }
+
+        @media (min-width: 768px) {
+            body {
+                line-height: 1.5;
+            }
         }
 
         /* 頂部導航列 */
@@ -1000,7 +1006,8 @@
             
             function doScroll() {
                 // 每次捲動時即時計算，這樣調整參數會立即生效
-                const lineHeight = fontSize * 1.6;
+                const lineHeightRatio = window.innerWidth >= 768 ? 1.5 : 1.7;
+                const lineHeight = fontSize * lineHeightRatio;
                 const scrollDistance = lineHeight * scrollLines;
                 
                 smoothScrollBy(scrollDistance, scrollSpeed * 1000);
@@ -1190,7 +1197,7 @@
         // ============ 滑動隱藏工具列 ============
         let lastScrollY = 0;
         let ticking = false;
-        const scrollThreshold = 50; // 要滑超過 50px 才觸發
+        const scrollThreshold = 90; // 要滑超過 90px 才觸發
 
         function handleScroll() {
             // 自動捲動時不處理工具列隱藏
