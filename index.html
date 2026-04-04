@@ -624,20 +624,19 @@
         <div class="popup-section">
             <label>🚀 動畫速度</label>
             <div class="scroll-options">
-                <button class="scroll-opt" data-speed="0.5">0.5秒</button>
                 <button class="scroll-opt" data-speed="1">1秒</button>
-                <button class="scroll-opt" data-speed="1.5">1.5秒</button>
                 <button class="scroll-opt" data-speed="2">2秒</button>
-                <button class="scroll-opt" data-speed="2.5">2.5秒</button>
+                <button class="scroll-opt" data-speed="3">3秒</button>
+                <button class="scroll-opt" data-speed="4">4秒</button>
             </div>
         </div>
         <div class="popup-section">
             <label>📏 每次幾行</label>
             <div class="scroll-options">
-                <button class="scroll-opt" data-lines="3">3行</button>
                 <button class="scroll-opt" data-lines="5">5行</button>
-                <button class="scroll-opt" data-lines="7">7行</button>
-                <button class="scroll-opt" data-lines="11">11行</button>
+                <button class="scroll-opt" data-lines="10">10行</button>
+                <button class="scroll-opt" data-lines="15">15行</button>
+                <button class="scroll-opt" data-lines="20">20行</button>
             </div>
         </div>
         <button class="scroll-start-btn" id="scrollStartBtn">▶️ 開始自動捲動</button>
@@ -710,8 +709,9 @@
         // 自動捲動狀態
         let autoScrollInterval = null;
         let scrollIntervalTime = 8;  // 秒
-        let scrollSpeed = 1;         // 秒
-        let scrollLines = 5;         // 行
+        let scrollSpeed = 2;         // 秒
+        let scrollLines = 10;        // 行
+        let isAutoScrolling = false; // 用來暫停工具列偵測
 
         // ============ DOM 元素 ============
         const loginScreen = document.getElementById('loginScreen');
@@ -975,6 +975,7 @@
         function startAutoScroll() {
             if (autoScrollInterval) return;
             
+            isAutoScrolling = true;
             const lineHeight = fontSize * 1.9; // line-height 是 1.9
             const scrollDistance = lineHeight * scrollLines;
             
@@ -999,6 +1000,7 @@
                 clearInterval(autoScrollInterval);
                 autoScrollInterval = null;
             }
+            isAutoScrolling = false;
             scrollStartBtn.textContent = '▶️ 開始自動捲動';
             scrollStartBtn.classList.remove('active');
             scrollIndicator.classList.remove('show');
@@ -1151,6 +1153,13 @@
         let ticking = false;
 
         function handleScroll() {
+            // 自動捲動時不處理工具列隱藏
+            if (isAutoScrolling) {
+                lastScrollY = window.scrollY;
+                ticking = false;
+                return;
+            }
+            
             const currentScrollY = window.scrollY;
             
             if (currentScrollY > lastScrollY && currentScrollY > 100) {
