@@ -222,10 +222,29 @@
 
         /* 主要內容區 */
         .main-content {
-            max-width: 750px;
+            max-width: 95%;
             margin: 0 auto;
             padding: 80px 20px 120px;
             display: none;
+        }
+
+        /* 響應式內容寬度 */
+        @media (min-width: 768px) {
+            .main-content {
+                max-width: 85%;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .main-content {
+                max-width: 70%;
+            }
+        }
+
+        @media (min-width: 1440px) {
+            .main-content {
+                max-width: 900px;
+            }
         }
 
         .main-content.show {
