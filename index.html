@@ -306,7 +306,7 @@
         }
 
         /* 字體控制彈窗 */
-        .font-popup {
+        .font-popup, .scroll-popup {
             position: fixed;
             top: 70px;
             right: 10px;
@@ -317,22 +317,33 @@
             box-shadow: 0 4px 20px var(--shadow);
             display: none;
             z-index: 101;
+            min-width: 200px;
         }
 
-        .font-popup.show {
+        .font-popup.show, .scroll-popup.show {
             display: block;
         }
 
-        .font-popup label {
+        .popup-section {
+            margin-bottom: 15px;
+        }
+
+        .popup-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .popup-section label {
             display: block;
-            margin-bottom: 10px;
-            font-size: 14px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #888;
             text-align: center;
         }
 
         .font-controls {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
             margin-bottom: 10px;
         }
@@ -364,6 +375,105 @@
 
         .font-slider {
             width: 100%;
+        }
+
+        /* 字體粗度控制 */
+        .weight-controls {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+
+        .weight-btn {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .weight-btn:hover {
+            background: var(--bg-color);
+        }
+
+        .weight-btn.active {
+            background: var(--button-bg);
+            color: var(--button-text);
+            border-color: var(--button-bg);
+        }
+
+        /* 自動捲動控制 */
+        .scroll-options {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .scroll-opt {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .scroll-opt:hover {
+            background: var(--bg-color);
+        }
+
+        .scroll-opt.active {
+            background: var(--button-bg);
+            color: var(--button-text);
+            border-color: var(--button-bg);
+        }
+
+        .scroll-start-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            border: none;
+            border-radius: 8px;
+            background: #4ade80;
+            color: #000;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .scroll-start-btn:hover {
+            background: #22c55e;
+        }
+
+        .scroll-start-btn.active {
+            background: #f87171;
+        }
+
+        /* 自動捲動指示器 */
+        .scroll-indicator {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            padding: 10px 15px;
+            background: rgba(74, 222, 128, 0.9);
+            color: #000;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            display: none;
+            z-index: 99;
+            cursor: pointer;
+        }
+
+        .scroll-indicator.show {
+            display: block;
         }
 
         /* 用戶選單 */
@@ -457,7 +567,8 @@
             <h1 id="bookTitle">小說閱讀器</h1>
         </div>
         <div class="header-controls">
-            <button class="btn btn-icon" id="fontBtn" title="字體大小">A</button>
+            <button class="btn btn-icon" id="scrollBtn" title="自動捲動">📜</button>
+            <button class="btn btn-icon" id="fontBtn" title="字體設定">A</button>
             <button class="btn btn-icon" id="themeToggle" title="開關燈">🌙</button>
             <div class="user-menu">
                 <img class="user-avatar" id="userAvatar" src="" alt="頭像">
@@ -471,13 +582,55 @@
 
     <!-- 字體控制 -->
     <div class="font-popup" id="fontPopup">
-        <label>字體大小</label>
-        <div class="font-controls">
-            <button class="font-btn" id="fontMinus">−</button>
-            <span class="font-size-value" id="fontSizeDisplay">18</span>
-            <button class="font-btn" id="fontPlus">+</button>
+        <div class="popup-section">
+            <label>字體大小</label>
+            <div class="font-controls">
+                <button class="font-btn" id="fontMinus">−</button>
+                <span class="font-size-value" id="fontSizeDisplay">18</span>
+                <button class="font-btn" id="fontPlus">+</button>
+            </div>
+            <input type="range" class="font-slider" id="fontSlider" min="14" max="28" value="18">
         </div>
-        <input type="range" class="font-slider" id="fontSlider" min="14" max="28" value="18">
+        <div class="popup-section">
+            <label>字體粗度</label>
+            <div class="weight-controls">
+                <button class="weight-btn" data-weight="400">正常</button>
+                <button class="weight-btn" data-weight="500">中等</button>
+                <button class="weight-btn" data-weight="600">半粗</button>
+                <button class="weight-btn" data-weight="700">粗</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自動捲動控制 -->
+    <div class="scroll-popup" id="scrollPopup">
+        <div class="popup-section">
+            <label>⏱️ 每隔幾秒</label>
+            <div class="scroll-options">
+                <button class="scroll-opt" data-interval="2">2秒</button>
+                <button class="scroll-opt" data-interval="5">5秒</button>
+                <button class="scroll-opt" data-interval="8">8秒</button>
+                <button class="scroll-opt" data-interval="10">10秒</button>
+            </div>
+        </div>
+        <div class="popup-section">
+            <label>🚀 捲動速度</label>
+            <div class="scroll-options">
+                <button class="scroll-opt" data-speed="0.3">快</button>
+                <button class="scroll-opt" data-speed="0.5">中</button>
+                <button class="scroll-opt" data-speed="0.7">慢</button>
+            </div>
+        </div>
+        <div class="popup-section">
+            <label>📏 每次幾行</label>
+            <div class="scroll-options">
+                <button class="scroll-opt" data-lines="1">1行</button>
+                <button class="scroll-opt" data-lines="2">2行</button>
+                <button class="scroll-opt" data-lines="3">3行</button>
+                <button class="scroll-opt" data-lines="5">5行</button>
+            </div>
+        </div>
+        <button class="scroll-start-btn" id="scrollStartBtn">▶️ 開始自動捲動</button>
     </div>
 
     <!-- 側邊目錄 -->
@@ -511,6 +664,9 @@
         <button class="btn" id="nextChapter">下一章 ➡</button>
     </nav>
 
+    <!-- 自動捲動指示器 -->
+    <div class="scroll-indicator" id="scrollIndicator">⏸️ 點擊停止</div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -538,7 +694,14 @@
         let totalChapters = 0;
         let currentChapterIndex = 1;
         let fontSize = 18;
+        let fontWeight = 400;
         let isDarkMode = false;
+        
+        // 自動捲動狀態
+        let autoScrollInterval = null;
+        let scrollIntervalTime = 2;  // 秒
+        let scrollSpeed = 0.5;       // 秒
+        let scrollLines = 2;         // 行
 
         // ============ DOM 元素 ============
         const loginScreen = document.getElementById('loginScreen');
@@ -566,6 +729,10 @@
         const userAvatar = document.getElementById('userAvatar');
         const userDropdown = document.getElementById('userDropdown');
         const logoutBtn = document.getElementById('logoutBtn');
+        const scrollBtn = document.getElementById('scrollBtn');
+        const scrollPopup = document.getElementById('scrollPopup');
+        const scrollStartBtn = document.getElementById('scrollStartBtn');
+        const scrollIndicator = document.getElementById('scrollIndicator');
 
         // ============ 登入狀態監聽 ============
         onAuthStateChanged(auth, async (user) => {
@@ -617,6 +784,9 @@
             }
             if (!fontPopup.contains(e.target) && e.target !== fontBtn) {
                 fontPopup.classList.remove('show');
+            }
+            if (!scrollPopup.contains(e.target) && e.target !== scrollBtn) {
+                scrollPopup.classList.remove('show');
             }
         });
 
@@ -692,6 +862,7 @@
 
         fontBtn.addEventListener('click', () => {
             fontPopup.classList.toggle('show');
+            scrollPopup.classList.remove('show');
         });
 
         function updateFontSize(newSize) {
@@ -714,6 +885,104 @@
             updateFontSize(fontSize + 1);
         });
 
+        // ============ 字體粗度控制 ============
+        const weightBtns = document.querySelectorAll('.weight-btn');
+        
+        function updateFontWeight(weight) {
+            fontWeight = weight;
+            chapterContent.style.fontWeight = weight;
+            localStorage.setItem('novel-fontWeight', weight);
+            
+            weightBtns.forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.weight) === weight);
+            });
+        }
+
+        weightBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                updateFontWeight(parseInt(btn.dataset.weight));
+            });
+        });
+
+        // ============ 自動捲動控制 ============
+        scrollBtn.addEventListener('click', () => {
+            scrollPopup.classList.toggle('show');
+            fontPopup.classList.remove('show');
+        });
+
+        // 選項按鈕
+        document.querySelectorAll('.scroll-opt[data-interval]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                scrollIntervalTime = parseFloat(btn.dataset.interval);
+                document.querySelectorAll('.scroll-opt[data-interval]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                localStorage.setItem('novel-scrollInterval', scrollIntervalTime);
+            });
+        });
+
+        document.querySelectorAll('.scroll-opt[data-speed]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                scrollSpeed = parseFloat(btn.dataset.speed);
+                document.querySelectorAll('.scroll-opt[data-speed]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                localStorage.setItem('novel-scrollSpeed', scrollSpeed);
+            });
+        });
+
+        document.querySelectorAll('.scroll-opt[data-lines]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                scrollLines = parseInt(btn.dataset.lines);
+                document.querySelectorAll('.scroll-opt[data-lines]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                localStorage.setItem('novel-scrollLines', scrollLines);
+            });
+        });
+
+        // 開始/停止自動捲動
+        function startAutoScroll() {
+            if (autoScrollInterval) return;
+            
+            const lineHeight = fontSize * 1.9; // line-height 是 1.9
+            const scrollDistance = lineHeight * scrollLines;
+            
+            autoScrollInterval = setInterval(() => {
+                window.scrollBy({
+                    top: scrollDistance,
+                    behavior: 'smooth'
+                });
+                
+                // 檢查是否到底部
+                if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight - 100) {
+                    stopAutoScroll();
+                }
+            }, scrollIntervalTime * 1000);
+            
+            scrollStartBtn.textContent = '⏹️ 停止自動捲動';
+            scrollStartBtn.classList.add('active');
+            scrollIndicator.classList.add('show');
+            scrollPopup.classList.remove('show');
+        }
+
+        function stopAutoScroll() {
+            if (autoScrollInterval) {
+                clearInterval(autoScrollInterval);
+                autoScrollInterval = null;
+            }
+            scrollStartBtn.textContent = '▶️ 開始自動捲動';
+            scrollStartBtn.classList.remove('active');
+            scrollIndicator.classList.remove('show');
+        }
+
+        scrollStartBtn.addEventListener('click', () => {
+            if (autoScrollInterval) {
+                stopAutoScroll();
+            } else {
+                startAutoScroll();
+            }
+        });
+
+        scrollIndicator.addEventListener('click', stopAutoScroll);
+
         // ============ 載入設定 ============
         function loadSettings() {
             const savedTheme = localStorage.getItem('novel-theme');
@@ -729,6 +998,34 @@
                 fontSlider.value = fontSize;
                 fontSizeDisplay.textContent = fontSize;
             }
+            
+            // 載入字體粗度
+            const savedFontWeight = localStorage.getItem('novel-fontWeight');
+            if (savedFontWeight) {
+                fontWeight = parseInt(savedFontWeight);
+            }
+            updateFontWeight(fontWeight);
+            
+            // 載入自動捲動設定
+            const savedScrollInterval = localStorage.getItem('novel-scrollInterval');
+            if (savedScrollInterval) scrollIntervalTime = parseFloat(savedScrollInterval);
+            
+            const savedScrollSpeed = localStorage.getItem('novel-scrollSpeed');
+            if (savedScrollSpeed) scrollSpeed = parseFloat(savedScrollSpeed);
+            
+            const savedScrollLines = localStorage.getItem('novel-scrollLines');
+            if (savedScrollLines) scrollLines = parseInt(savedScrollLines);
+            
+            // 更新按鈕狀態
+            document.querySelectorAll('.scroll-opt[data-interval]').forEach(btn => {
+                btn.classList.toggle('active', parseFloat(btn.dataset.interval) === scrollIntervalTime);
+            });
+            document.querySelectorAll('.scroll-opt[data-speed]').forEach(btn => {
+                btn.classList.toggle('active', parseFloat(btn.dataset.speed) === scrollSpeed);
+            });
+            document.querySelectorAll('.scroll-opt[data-lines]').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.lines) === scrollLines);
+            });
         }
 
         // ============ 章節目錄 ============
@@ -768,6 +1065,7 @@
             
             chapterContent.innerHTML = paragraphs || `<p>${chapter.content}</p>`;
             chapterContent.style.fontSize = fontSize + 'px';
+            chapterContent.style.fontWeight = fontWeight;
             
             chapterView.style.display = 'block';
 
