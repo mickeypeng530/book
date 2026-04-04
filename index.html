@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>小說閱讀器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -36,7 +39,7 @@
         }
 
         body {
-            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+            font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.7;
@@ -230,7 +233,7 @@
         .main-content {
             max-width: 99%;
             margin: 0 auto;
-            padding: 80px 20px 120px;
+            padding: 80px 8px 120px;
             display: none;
         }
 
@@ -238,6 +241,7 @@
         @media (min-width: 768px) {
             .main-content {
                 max-width: 90%;
+                padding: 80px 20px 120px;
             }
         }
 
