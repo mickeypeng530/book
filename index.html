@@ -1197,7 +1197,8 @@
         // ============ 滑動隱藏工具列 ============
         let lastScrollY = 0;
         let ticking = false;
-        const scrollThreshold = 90; // 要滑超過 90px 才觸發
+        const hideThreshold = 50;  // 往下滑 50px 就隱藏（敏感）
+        const showThreshold = 120; // 往上滑 120px 才顯示（不敏感）
 
         function handleScroll() {
             // 自動捲動時不處理工具列隱藏
@@ -1210,12 +1211,12 @@
             const currentScrollY = window.scrollY;
             const scrollDiff = currentScrollY - lastScrollY;
             
-            if (scrollDiff > scrollThreshold && currentScrollY > 100) {
+            if (scrollDiff > hideThreshold && currentScrollY > 100) {
                 // 往下滑超過門檻 - 隱藏工具列
                 header.classList.add('hidden');
                 footerNav.classList.add('hidden');
                 lastScrollY = currentScrollY;
-            } else if (scrollDiff < -scrollThreshold) {
+            } else if (scrollDiff < -showThreshold) {
                 // 往上滑超過門檻 - 顯示工具列
                 header.classList.remove('hidden');
                 footerNav.classList.remove('hidden');
