@@ -39,7 +39,7 @@
             font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            line-height: 1.9;
+            line-height: 1.8;
             transition: all 0.3s ease;
         }
 
@@ -222,7 +222,7 @@
 
         /* 主要內容區 */
         .main-content {
-            max-width: 95%;
+            max-width: 97%;
             margin: 0 auto;
             padding: 80px 20px 120px;
             display: none;
@@ -231,7 +231,7 @@
         /* 響應式內容寬度 */
         @media (min-width: 768px) {
             .main-content {
-                max-width: 85%;
+                max-width: 90%;
             }
         }
 
@@ -615,7 +615,7 @@
                 <span class="font-size-value" id="fontSizeDisplay">20</span>
                 <button class="font-btn" id="fontPlus">+</button>
             </div>
-            <input type="range" class="font-slider" id="fontSlider" min="14" max="28" value="20">
+            <input type="range" class="font-slider" id="fontSlider" min="18" max="36" step="2" value="20">
         </div>
         <div class="popup-section">
             <label>字體粗度</label>
@@ -895,7 +895,9 @@
         });
 
         function updateFontSize(newSize) {
-            fontSize = Math.max(14, Math.min(28, newSize));
+            // 確保在 18-36 範圍內，且是偶數
+            fontSize = Math.max(18, Math.min(36, newSize));
+            if (fontSize % 2 !== 0) fontSize = fontSize - 1;
             fontSizeDisplay.textContent = fontSize;
             fontSlider.value = fontSize;
             chapterContent.style.fontSize = fontSize + 'px';
@@ -907,11 +909,11 @@
         });
 
         fontMinus.addEventListener('click', () => {
-            updateFontSize(fontSize - 1);
+            updateFontSize(fontSize - 2);
         });
 
         fontPlus.addEventListener('click', () => {
-            updateFontSize(fontSize + 1);
+            updateFontSize(fontSize + 2);
         });
 
         // ============ 字體粗度控制 ============
@@ -998,7 +1000,7 @@
             
             function doScroll() {
                 // 每次捲動時即時計算，這樣調整參數會立即生效
-                const lineHeight = fontSize * 1.9;
+                const lineHeight = fontSize * 1.8;
                 const scrollDistance = lineHeight * scrollLines;
                 
                 smoothScrollBy(scrollDistance, scrollSpeed * 1000);
@@ -1062,9 +1064,12 @@
             const savedFontSize = localStorage.getItem('novel-fontSize');
             if (savedFontSize) {
                 fontSize = parseInt(savedFontSize);
-                fontSlider.value = fontSize;
-                fontSizeDisplay.textContent = fontSize;
+            } else {
+                // 根據螢幕寬度設定預設字體：手機 20，電腦 26
+                fontSize = window.innerWidth >= 768 ? 26 : 20;
             }
+            fontSlider.value = fontSize;
+            fontSizeDisplay.textContent = fontSize;
             
             // 載入字體粗度
             const savedFontWeight = localStorage.getItem('novel-fontWeight');
