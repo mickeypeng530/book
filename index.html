@@ -554,6 +554,8 @@
         /* 用戶選單 */
         .user-menu {
             position: relative;
+            display: flex;
+            align-items: center;
         }
 
         .user-avatar {
@@ -562,6 +564,7 @@
             border-radius: 50%;
             cursor: pointer;
             border: 2px solid var(--border-color);
+            box-sizing: border-box;
         }
 
         @media (max-width: 768px) {
