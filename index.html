@@ -2034,16 +2034,6 @@
         let currentMusicSrc = null;
         let isMusicPlaying = false;
 
-        // 音樂選擇
-        document.querySelectorAll('.music-item').forEach(item => {
-            item.addEventListener('click', () => {
-                document.querySelectorAll('.music-item').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-                currentMusicSrc = item.dataset.src;
-                localStorage.setItem('novel-musicSrc', currentMusicSrc);
-            });
-        });
-
         // 音量控制
         musicVolumeSlider.addEventListener('input', () => {
             const volume = musicVolumeSlider.value;
@@ -2059,34 +2049,31 @@
                 return;
             }
             
+            // 如果換歌，先停止目前的
+            if (bgMusic.src && !bgMusic.src.endsWith(currentMusicSrc)) {
+                bgMusic.pause();
+            }
+            
             bgMusic.src = currentMusicSrc;
             bgMusic.volume = musicVolumeSlider.value / 100;
             
-            // 加入錯誤處理
-            bgMusic.onerror = () => {
-                alert('音樂載入失敗');
-                stopMusic();
-            };
+            // 更新 UI 狀態
+            isMusicPlaying = true;
+            musicPlayBtn.textContent = '⏹️ 停止';
+            musicPlayBtn.classList.add('active');
+            musicIndicator.classList.add('show');
             
-            bgMusic.oncanplay = () => {
-                // 音樂可以播放了
-                isMusicPlaying = true;
-                musicPlayBtn.textContent = '⏹️ 停止';
-                musicPlayBtn.classList.add('active');
-                musicIndicator.classList.add('show');
-                
-                // 更新音樂項目狀態
-                document.querySelectorAll('.music-item').forEach(i => {
-                    i.classList.remove('playing');
-                    if (i.dataset.src === currentMusicSrc) {
-                        i.classList.add('playing');
-                    }
-                });
-            };
+            // 更新音樂項目狀態
+            document.querySelectorAll('.music-item').forEach(i => {
+                i.classList.remove('playing');
+                if (i.dataset.src === currentMusicSrc) {
+                    i.classList.add('playing');
+                }
+            });
             
             bgMusic.play().catch(err => {
                 console.error('播放失敗:', err);
-                alert('播放失敗: ' + err.message);
+                stopMusic();
             });
             
             musicPopup.classList.remove('show');
@@ -2105,6 +2092,25 @@
                 i.classList.remove('playing');
             });
         }
+
+        // 點擊歌曲時，如果正在播放就自動切換
+        document.querySelectorAll('.music-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const wasPlaying = isMusicPlaying;
+                const newSrc = item.dataset.src;
+                
+                // 更新選擇狀態
+                document.querySelectorAll('.music-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                currentMusicSrc = newSrc;
+                localStorage.setItem('novel-musicSrc', currentMusicSrc);
+                
+                // 如果正在播放，自動切換到新歌
+                if (wasPlaying) {
+                    playMusic();
+                }
+            });
+        });
 
         musicPlayBtn.addEventListener('click', () => {
             if (isMusicPlaying) {
