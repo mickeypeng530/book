@@ -956,10 +956,10 @@
         <div class="popup-section">
             <label>🎵 選擇音樂</label>
             <div class="music-list">
-                <div class="music-item" data-id="11HYodCP6-u75rTRKdV08GJh8cUIWMHs3">旅人</div>
-                <div class="music-item" data-id="1XUE5BHrgN_x_cENMBq1v0uPRvaV8NbTs">紅顏舊</div>
-                <div class="music-item" data-id="1YIpfwyxIrVnA4SgV5H4DOToMWVtTVELg">Canon</div>
-                <div class="music-item" data-id="1fanoODjtN_C1_NlEXhJmjsl46wL_NVJI">River Flow in You</div>
+                <div class="music-item" data-src="./musice/Traveler.mp3">旅人</div>
+                <div class="music-item" data-src="./musice/Old.mp3">紅顏舊</div>
+                <div class="music-item" data-src="./musice/Canon.mp3">Canon</div>
+                <div class="music-item" data-src="./musice/River.mp3">River Flow in You</div>
             </div>
         </div>
         <div class="popup-section">
@@ -2031,22 +2031,16 @@
         const bgMusic = document.getElementById('bgMusic');
         const menuMusicSettings = document.getElementById('menuMusicSettings');
         
-        let currentMusicId = null;
+        let currentMusicSrc = null;
         let isMusicPlaying = false;
-
-        // 轉換 Google Drive ID 為可播放 URL
-        function getDriveAudioUrl(fileId) {
-            // 使用 Google Drive 的直接串流連結
-            return `https://drive.google.com/uc?export=download&id=${fileId}`;
-        }
 
         // 音樂選擇
         document.querySelectorAll('.music-item').forEach(item => {
             item.addEventListener('click', () => {
                 document.querySelectorAll('.music-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
-                currentMusicId = item.dataset.id;
-                localStorage.setItem('novel-musicId', currentMusicId);
+                currentMusicSrc = item.dataset.src;
+                localStorage.setItem('novel-musicSrc', currentMusicSrc);
             });
         });
 
@@ -2060,18 +2054,17 @@
 
         // 播放/停止
         function playMusic() {
-            if (!currentMusicId) {
+            if (!currentMusicSrc) {
                 alert('請先選擇一首音樂');
                 return;
             }
             
-            const url = getDriveAudioUrl(currentMusicId);
-            bgMusic.src = url;
+            bgMusic.src = currentMusicSrc;
             bgMusic.volume = musicVolumeSlider.value / 100;
             
             // 加入錯誤處理
             bgMusic.onerror = () => {
-                alert('音樂載入失敗，請確認 Google Drive 分享權限已設為「知道連結的人都可以檢視」');
+                alert('音樂載入失敗');
                 stopMusic();
             };
             
@@ -2085,7 +2078,7 @@
                 // 更新音樂項目狀態
                 document.querySelectorAll('.music-item').forEach(i => {
                     i.classList.remove('playing');
-                    if (i.dataset.id === currentMusicId) {
+                    if (i.dataset.src === currentMusicSrc) {
                         i.classList.add('playing');
                     }
                 });
@@ -2140,11 +2133,11 @@
 
         // 載入音樂設定
         function loadMusicSettings() {
-            const savedMusicId = localStorage.getItem('novel-musicId');
-            if (savedMusicId) {
-                currentMusicId = savedMusicId;
+            const savedMusicSrc = localStorage.getItem('novel-musicSrc');
+            if (savedMusicSrc) {
+                currentMusicSrc = savedMusicSrc;
                 document.querySelectorAll('.music-item').forEach(i => {
-                    i.classList.toggle('active', i.dataset.id === savedMusicId);
+                    i.classList.toggle('active', i.dataset.src === savedMusicSrc);
                 });
             }
             
