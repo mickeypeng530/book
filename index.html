@@ -306,8 +306,38 @@
 
         .chapter-progress {
             font-size: 14px;
-            min-width: 80px;
+            min-width: 100px;
             text-align: center;
+        }
+
+        /* 書籤按鈕 */
+        .bookmark-btn {
+            font-size: 16px;
+            padding: 8px 10px;
+            opacity: 0.5;
+            transition: all 0.2s;
+        }
+
+        .bookmark-btn.active {
+            opacity: 1;
+            background: var(--button-bg);
+            color: var(--button-text);
+        }
+
+        /* 書籤直線標記 */
+        .bookmark-line {
+            position: absolute;
+            left: 0;
+            width: 3px;
+            background: #3B8BD4;
+            opacity: 0.7;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+
+        /* 章節內容容器需要 relative */
+        .chapter-content {
+            position: relative;
         }
 
         /* 載入畫面 */
@@ -644,20 +674,21 @@
         <div class="popup-section">
             <label>⏱️ 每隔幾秒</label>
             <div class="scroll-options">
-                <button class="scroll-opt" data-interval="2">2秒</button>
-                <button class="scroll-opt" data-interval="5">5秒</button>
-                <button class="scroll-opt" data-interval="8">8秒</button>
-                <button class="scroll-opt" data-interval="10">10秒</button>
+                <button class="scroll-opt" data-interval="3">3秒</button>
+                <button class="scroll-opt" data-interval="6">6秒</button>
+                <button class="scroll-opt" data-interval="9">9秒</button>
+                <button class="scroll-opt" data-interval="12">12秒</button>
                 <button class="scroll-opt" data-interval="15">15秒</button>
+                <button class="scroll-opt" data-interval="18">18秒</button>
             </div>
         </div>
         <div class="popup-section">
             <label>🚀 動畫速度</label>
             <div class="scroll-options">
-                <button class="scroll-opt" data-speed="1">1秒</button>
                 <button class="scroll-opt" data-speed="2">2秒</button>
                 <button class="scroll-opt" data-speed="3">3秒</button>
                 <button class="scroll-opt" data-speed="4">4秒</button>
+                <button class="scroll-opt" data-speed="5">5秒</button>
             </div>
         </div>
         <div class="popup-section">
@@ -699,7 +730,8 @@
     <!-- 底部導航 -->
     <nav class="footer-nav" id="footerNav">
         <button class="btn" id="prevChapter">⬅ 上一章</button>
-        <span class="chapter-progress" id="chapterProgress">- / -</span>
+        <span class="chapter-progress" id="chapterProgress">- 章 (0%)</span>
+        <button class="btn btn-icon bookmark-btn" id="bookmarkBtn" title="加入書籤">📍</button>
         <button class="btn" id="nextChapter">下一章 ➡</button>
     </nav>
 
@@ -738,10 +770,13 @@
         
         // 自動捲動狀態
         let autoScrollInterval = null;
-        let scrollIntervalTime = 8;  // 秒
-        let scrollSpeed = 2;         // 秒
-        let scrollLines = 10;        // 行
-        let isAutoScrolling = false; // 用來暫停工具列偵測
+        let scrollIntervalTime = 15;  // 秒（預設15）
+        let scrollSpeed = 3;          // 秒（預設3）
+        let scrollLines = 10;         // 行
+        let isAutoScrolling = false;  // 用來暫停工具列偵測
+        
+        // 書籤狀態
+        let currentBookmark = null;
 
         // ============ DOM 元素 ============
         const loginScreen = document.getElementById('loginScreen');
@@ -773,6 +808,7 @@
         const scrollPopup = document.getElementById('scrollPopup');
         const scrollStartBtn = document.getElementById('scrollStartBtn');
         const scrollIndicator = document.getElementById('scrollIndicator');
+        const bookmarkBtn = document.getElementById('bookmarkBtn');
 
         // ============ 登入狀態監聽 ============
         onAuthStateChanged(auth, async (user) => {
@@ -1144,30 +1180,40 @@
             const paragraphs = chapter.content
                 .split(/\n\s*\n/)
                 .filter(p => p.trim())
-                .map(p => `<p>${p.trim()}</p>`)
+                .map((p, i) => `<p data-index="${i}">${p.trim()}</p>`)
                 .join('');
             
-            chapterContent.innerHTML = paragraphs || `<p>${chapter.content}</p>`;
+            chapterContent.innerHTML = paragraphs || `<p data-index="0">${chapter.content}</p>`;
             chapterContent.style.fontSize = fontSize + 'px';
             chapterContent.style.fontWeight = fontWeight;
             
             chapterView.style.display = 'block';
 
-            // 顯示進度（第幾章 / 共幾章）
-            const currentIndex = chapters.findIndex(ch => ch.num === num) + 1;
-            chapterProgress.textContent = `${currentIndex} / ${totalChapters}`;
+            // 顯示進度（章節號 + 本章閱讀百分比）
+            updateProgress();
 
             chapterList.querySelectorAll('li').forEach(li => {
                 li.classList.toggle('active', parseInt(li.dataset.num) === num);
             });
 
             window.scrollTo(0, 0);
+            
+            // 載入書籤
+            await loadBookmark();
 
             // 儲存進度
             await set(ref(db, 'novel/progress'), {
                 chapter: num,
                 updatedAt: Date.now()
             });
+        }
+        
+        // 更新閱讀進度百分比
+        function updateProgress() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const percent = docHeight > 0 ? Math.round((scrollTop / docHeight) * 100) : 0;
+            chapterProgress.textContent = `${currentChapterIndex} 章 (${percent}%)`;
         }
 
         // ============ 上下章 ============
@@ -1206,6 +1252,9 @@
         const showThreshold = 120; // 往上滑 120px 才顯示（不敏感）
 
         function handleScroll() {
+            // 更新閱讀進度
+            updateProgress();
+            
             // 自動捲動時不處理工具列隱藏
             if (isAutoScrolling) {
                 lastScrollY = window.scrollY;
@@ -1243,6 +1292,111 @@
             if (e.target === chapterContent || chapterContent.contains(e.target)) {
                 header.classList.toggle('hidden');
                 footerNav.classList.toggle('hidden');
+            }
+        });
+        
+        // ============ 書籤功能 ============
+        // 取得畫面中央的段落
+        function getCenterParagraph() {
+            const paragraphs = chapterContent.querySelectorAll('p');
+            const viewportCenter = window.scrollY + window.innerHeight / 2;
+            
+            let closestP = null;
+            let closestDistance = Infinity;
+            
+            paragraphs.forEach(p => {
+                const rect = p.getBoundingClientRect();
+                const pCenter = window.scrollY + rect.top + rect.height / 2;
+                const distance = Math.abs(pCenter - viewportCenter);
+                
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestP = p;
+                }
+            });
+            
+            return closestP;
+        }
+        
+        // 顯示書籤直線
+        function showBookmarkLine(paragraphIndex) {
+            // 移除舊的書籤線
+            const oldLine = chapterContent.querySelector('.bookmark-line');
+            if (oldLine) oldLine.remove();
+            
+            const p = chapterContent.querySelector(`p[data-index="${paragraphIndex}"]`);
+            if (!p) return;
+            
+            const line = document.createElement('div');
+            line.className = 'bookmark-line';
+            line.style.top = p.offsetTop + 'px';
+            line.style.height = p.offsetHeight + 'px';
+            chapterContent.appendChild(line);
+            
+            bookmarkBtn.classList.add('active');
+        }
+        
+        // 清除書籤直線
+        function clearBookmarkLine() {
+            const line = chapterContent.querySelector('.bookmark-line');
+            if (line) line.remove();
+            bookmarkBtn.classList.remove('active');
+        }
+        
+        // 載入書籤
+        async function loadBookmark() {
+            clearBookmarkLine();
+            currentBookmark = null;
+            
+            const snap = await get(ref(db, 'novel/bookmark'));
+            if (snap.exists()) {
+                const bookmark = snap.val();
+                if (bookmark.chapter === currentChapterIndex) {
+                    currentBookmark = bookmark;
+                    showBookmarkLine(bookmark.paragraph);
+                    
+                    // 自動跳到書籤位置
+                    const p = chapterContent.querySelector(`p[data-index="${bookmark.paragraph}"]`);
+                    if (p) {
+                        setTimeout(() => {
+                            p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 300);
+                    }
+                }
+            }
+        }
+        
+        // 儲存書籤
+        async function saveBookmark(paragraphIndex) {
+            currentBookmark = {
+                chapter: currentChapterIndex,
+                paragraph: paragraphIndex,
+                updatedAt: Date.now()
+            };
+            
+            await set(ref(db, 'novel/bookmark'), currentBookmark);
+            showBookmarkLine(paragraphIndex);
+        }
+        
+        // 刪除書籤
+        async function removeBookmark() {
+            currentBookmark = null;
+            await set(ref(db, 'novel/bookmark'), null);
+            clearBookmarkLine();
+        }
+        
+        // 書籤按鈕點擊
+        bookmarkBtn.addEventListener('click', async () => {
+            if (currentBookmark && currentBookmark.chapter === currentChapterIndex) {
+                // 已有書籤，刪除
+                await removeBookmark();
+            } else {
+                // 新增書籤到畫面中央段落
+                const centerP = getCenterParagraph();
+                if (centerP) {
+                    const index = parseInt(centerP.dataset.index);
+                    await saveBookmark(index);
+                }
             }
         });
     </script>
