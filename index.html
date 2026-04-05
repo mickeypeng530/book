@@ -527,8 +527,8 @@
         /* 自動捲動指示器 */
         .scroll-indicator {
             position: fixed;
-            top: 70px;
-            right: 15px;
+            top: 80px;
+            right: 10px;
             width: 36px;
             height: 36px;
             background: rgba(74, 222, 128, 0.6);
@@ -554,8 +554,8 @@
         /* TTS 指示器 */
         .tts-indicator {
             position: fixed;
-            top: 70px;
-            right: 60px;
+            top: 125px;
+            right: 10px;
             width: 36px;
             height: 36px;
             background: rgba(99, 102, 241, 0.6);
@@ -660,8 +660,8 @@
         /* 音樂播放指示器 */
         .music-indicator {
             position: fixed;
-            top: 70px;
-            right: 105px;
+            top: 170px;
+            right: 10px;
             width: 36px;
             height: 36px;
             background: rgba(74, 222, 128, 0.6);
@@ -958,7 +958,7 @@
             <div class="music-list">
                 <div class="music-item" data-id="11HYodCP6-u75rTRKdV08GJh8cUIWMHs3">旅人</div>
                 <div class="music-item" data-id="1XUE5BHrgN_x_cENMBq1v0uPRvaV8NbTs">紅顏舊</div>
-                <div class="music-item" data-id="15ExpUxDwe9D8bOxN2X0MdtJ-Sq7vf4K0">Canon</div>
+                <div class="music-item" data-id="1YIpfwyxIrVnA4SgV5H4DOToMWVtTVELg">Canon</div>
                 <div class="music-item" data-id="1fanoODjtN_C1_NlEXhJmjsl46wL_NVJI">River Flow in You</div>
             </div>
         </div>
@@ -2036,7 +2036,8 @@
 
         // 轉換 Google Drive ID 為可播放 URL
         function getDriveAudioUrl(fileId) {
-            return `https://docs.google.com/uc?export=download&id=${fileId}`;
+            // 使用 Google Drive 的直接串流連結
+            return `https://drive.google.com/uc?export=download&id=${fileId}`;
         }
 
         // 音樂選擇
@@ -2067,21 +2068,35 @@
             const url = getDriveAudioUrl(currentMusicId);
             bgMusic.src = url;
             bgMusic.volume = musicVolumeSlider.value / 100;
-            bgMusic.play();
             
-            isMusicPlaying = true;
-            musicPlayBtn.textContent = '⏹️ 停止';
-            musicPlayBtn.classList.add('active');
-            musicIndicator.classList.add('show');
-            musicPopup.classList.remove('show');
+            // 加入錯誤處理
+            bgMusic.onerror = () => {
+                alert('音樂載入失敗，請確認 Google Drive 分享權限已設為「知道連結的人都可以檢視」');
+                stopMusic();
+            };
             
-            // 更新音樂項目狀態
-            document.querySelectorAll('.music-item').forEach(i => {
-                i.classList.remove('playing');
-                if (i.dataset.id === currentMusicId) {
-                    i.classList.add('playing');
-                }
+            bgMusic.oncanplay = () => {
+                // 音樂可以播放了
+                isMusicPlaying = true;
+                musicPlayBtn.textContent = '⏹️ 停止';
+                musicPlayBtn.classList.add('active');
+                musicIndicator.classList.add('show');
+                
+                // 更新音樂項目狀態
+                document.querySelectorAll('.music-item').forEach(i => {
+                    i.classList.remove('playing');
+                    if (i.dataset.id === currentMusicId) {
+                        i.classList.add('playing');
+                    }
+                });
+            };
+            
+            bgMusic.play().catch(err => {
+                console.error('播放失敗:', err);
+                alert('播放失敗: ' + err.message);
             });
+            
+            musicPopup.classList.remove('show');
         }
 
         function stopMusic() {
