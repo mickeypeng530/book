@@ -336,7 +336,7 @@
         /* 書籤直線標記 */
         .bookmark-line {
             position: absolute;
-            left: 0;
+            left: -8px;
             width: 3px;
             background: #3B8BD4;
             opacity: 0.7;
@@ -374,7 +374,7 @@
         }
 
         /* 字體控制彈窗 */
-        .font-popup, .scroll-popup {
+        .font-popup, .scroll-popup, .tts-popup {
             position: fixed;
             top: 70px;
             right: 10px;
@@ -388,7 +388,7 @@
             min-width: 200px;
         }
 
-        .font-popup.show, .scroll-popup.show {
+        .font-popup.show, .scroll-popup.show, .tts-popup.show {
             display: block;
         }
 
@@ -551,6 +551,74 @@
             display: flex;
         }
 
+        /* TTS 指示器 */
+        .tts-indicator {
+            position: fixed;
+            top: 70px;
+            right: 60px;
+            width: 36px;
+            height: 36px;
+            background: rgba(99, 102, 241, 0.6);
+            color: #fff;
+            border-radius: 50%;
+            font-size: 16px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 99;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tts-indicator:hover {
+            background: rgba(99, 102, 241, 0.9);
+        }
+
+        .tts-indicator.show {
+            display: flex;
+        }
+
+        /* TTS 選擇器 */
+        .tts-select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .tts-rate-opt {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tts-rate-opt:hover {
+            background: var(--bg-color);
+        }
+
+        .tts-rate-opt.active {
+            background: var(--button-bg);
+            color: var(--button-text);
+            border-color: var(--button-bg);
+        }
+
+        /* 正在唸的段落 highlight */
+        .chapter-content p.tts-speaking {
+            background: rgba(99, 102, 241, 0.15);
+            border-left: 3px solid #6366f1;
+            margin-left: -3px;
+            padding-left: 3px;
+        }
+
         /* 用戶選單 */
         .user-menu {
             position: relative;
@@ -641,14 +709,65 @@
     <!-- 頂部導航 -->
     <header class="header" id="header" style="display: none;">
         <div class="header-left">
-            <button class="btn btn-icon" id="menuBtn" title="章節目錄">☰</button>
+            <button class="btn btn-icon" id="menuBtn" title="章節目錄">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
             <h1 id="bookTitle">小說閱讀器</h1>
         </div>
         <div class="header-controls">
-            <button class="btn btn-icon" id="quickScrollBtn" title="開始自動捲動">▶️</button>
-            <button class="btn btn-icon" id="scrollBtn" title="自動捲動設定">📜</button>
-            <button class="btn btn-icon" id="fontBtn" title="字體設定">A</button>
-            <button class="btn btn-icon" id="themeToggle" title="開關燈">🌙</button>
+            <button class="btn btn-icon" id="quickTtsBtn" title="開始唸故事">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                </svg>
+            </button>
+            <button class="btn btn-icon" id="ttsBtn" title="唸故事設定">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+            </button>
+            <button class="btn btn-icon" id="quickScrollBtn" title="開始自動捲動">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+            </button>
+            <button class="btn btn-icon" id="scrollBtn" title="自動捲動設定">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+            <button class="btn btn-icon" id="fontBtn" title="字體設定">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                    <line x1="9" y1="20" x2="15" y2="20"></line>
+                    <line x1="12" y1="4" x2="12" y2="20"></line>
+                </svg>
+            </button>
+            <button class="btn btn-icon" id="themeToggle" title="開關燈">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-moon">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-sun" style="display:none;">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
             <div class="user-menu">
                 <img class="user-avatar" id="userAvatar" src="" alt="頭像">
                 <div class="user-dropdown" id="userDropdown">
@@ -688,7 +807,6 @@
             <label>⏱️ 每隔幾秒</label>
             <div class="scroll-options">
                 <button class="scroll-opt" data-interval="3">3秒</button>
-                <button class="scroll-opt" data-interval="6">6秒</button>
                 <button class="scroll-opt" data-interval="9">9秒</button>
                 <button class="scroll-opt" data-interval="12">12秒</button>
                 <button class="scroll-opt" data-interval="15">15秒</button>
@@ -714,6 +832,34 @@
             </div>
         </div>
         <button class="scroll-start-btn" id="scrollStartBtn">▶️ 開始自動捲動</button>
+    </div>
+
+    <!-- 唸故事設定 -->
+    <div class="tts-popup" id="ttsPopup">
+        <div class="popup-section">
+            <label>🎙️ 選擇語音</label>
+            <select id="voiceSelect" class="tts-select">
+                <option value="">載入中...</option>
+            </select>
+        </div>
+        <div class="popup-section">
+            <label>🚀 語速: <span id="ttsRateValue">1.0x</span></label>
+            <div class="scroll-options">
+                <button class="tts-rate-opt" data-rate="0.8">0.8x</button>
+                <button class="tts-rate-opt" data-rate="1">1.0x</button>
+                <button class="tts-rate-opt" data-rate="1.2">1.2x</button>
+                <button class="tts-rate-opt" data-rate="1.5">1.5x</button>
+            </div>
+        </div>
+        <button class="scroll-start-btn" id="ttsStartBtn">🔊 開始唸故事</button>
+    </div>
+
+    <!-- TTS 播放指示器 -->
+    <div class="tts-indicator" id="ttsIndicator">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="4" width="4" height="16"></rect>
+            <rect x="14" y="4" width="4" height="16"></rect>
+        </svg>
     </div>
 
     <!-- 側邊目錄 -->
@@ -742,14 +888,33 @@
 
     <!-- 底部導航 -->
     <nav class="footer-nav" id="footerNav">
-        <button class="btn" id="prevChapter">⬅ 上一章</button>
+        <button class="btn" id="prevChapter">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            上一章
+        </button>
         <span class="chapter-progress" id="chapterProgress">- 章 (0%)</span>
-        <button class="btn btn-icon bookmark-btn" id="bookmarkBtn" title="加入書籤">📍</button>
-        <button class="btn" id="nextChapter">下一章 ➡</button>
+        <button class="btn btn-icon bookmark-btn" id="bookmarkBtn" title="加入書籤">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </button>
+        <button class="btn" id="nextChapter">
+            下一章
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 4px;">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </button>
     </nav>
 
     <!-- 自動捲動指示器 -->
-    <div class="scroll-indicator" id="scrollIndicator">⏸️</div>
+    <div class="scroll-indicator" id="scrollIndicator">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="4" width="4" height="16"></rect>
+            <rect x="14" y="4" width="4" height="16"></rect>
+        </svg>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -791,6 +956,13 @@
         // 書籤狀態
         let currentBookmark = null;
 
+        // TTS 狀態
+        let ttsVoices = [];
+        let ttsSelectedVoice = null;
+        let ttsRate = 1;
+        let ttsSpeaking = false;
+        let ttsCurrentParagraphIndex = 0;
+
         // ============ DOM 元素 ============
         const loginScreen = document.getElementById('loginScreen');
         const loginBtn = document.getElementById('loginBtn');
@@ -823,6 +995,15 @@
         const scrollStartBtn = document.getElementById('scrollStartBtn');
         const scrollIndicator = document.getElementById('scrollIndicator');
         const bookmarkBtn = document.getElementById('bookmarkBtn');
+        
+        // TTS DOM 元素
+        const quickTtsBtn = document.getElementById('quickTtsBtn');
+        const ttsBtn = document.getElementById('ttsBtn');
+        const ttsPopup = document.getElementById('ttsPopup');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const ttsRateValue = document.getElementById('ttsRateValue');
+        const ttsStartBtn = document.getElementById('ttsStartBtn');
+        const ttsIndicator = document.getElementById('ttsIndicator');
 
         // ============ 登入狀態監聽 ============
         onAuthStateChanged(auth, async (user) => {
@@ -878,6 +1059,9 @@
             if (!scrollPopup.contains(e.target) && e.target !== scrollBtn) {
                 scrollPopup.classList.remove('show');
             }
+            if (!ttsPopup.contains(e.target) && e.target !== ttsBtn) {
+                ttsPopup.classList.remove('show');
+            }
         });
 
         // ============ 載入小說 ============
@@ -928,10 +1112,22 @@
         }
 
         // ============ 開關燈 ============
+        function updateThemeIcon() {
+            const moonIcon = themeToggle.querySelector('.icon-moon');
+            const sunIcon = themeToggle.querySelector('.icon-sun');
+            if (isDarkMode) {
+                moonIcon.style.display = 'none';
+                sunIcon.style.display = 'block';
+            } else {
+                moonIcon.style.display = 'block';
+                sunIcon.style.display = 'none';
+            }
+        }
+
         function toggleTheme() {
             isDarkMode = !isDarkMode;
             document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-            themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+            updateThemeIcon();
             localStorage.setItem('novel-theme', isDarkMode ? 'dark' : 'light');
         }
 
@@ -1092,11 +1288,15 @@
             scrollIndicator.classList.add('show');
             scrollPopup.classList.remove('show');
             
-            // 快捷按鈕變暗、自動收起工具列
+            // 快捷按鈕變暗
             quickScrollBtn.style.opacity = '0.4';
             quickScrollBtn.style.pointerEvents = 'none';
-            header.classList.add('hidden');
-            footerNav.classList.add('hidden');
+            
+            // 只在手機版自動收起工具列
+            if (window.innerWidth <= 768) {
+                header.classList.add('hidden');
+                footerNav.classList.add('hidden');
+            }
         }
 
         function stopAutoScroll() {
@@ -1135,8 +1335,8 @@
             if (savedTheme === 'dark') {
                 isDarkMode = true;
                 document.documentElement.setAttribute('data-theme', 'dark');
-                themeToggle.textContent = '☀️';
             }
+            updateThemeIcon();
             
             const savedFontSize = localStorage.getItem('novel-fontSize');
             if (savedFontSize) {
@@ -1274,7 +1474,7 @@
             }
         });
 
-        // ============ 滑動隱藏工具列 ============
+        // ============ 滑動隱藏工具列（只在手機版） ============
         let lastScrollY = 0;
         let ticking = false;
         const hideThreshold = 50;  // 往下滑 50px 就隱藏（敏感）
@@ -1283,6 +1483,12 @@
         function handleScroll() {
             // 更新閱讀進度
             updateProgress();
+            
+            // 電腦版不自動隱藏工具列
+            if (window.innerWidth > 768) {
+                ticking = false;
+                return;
+            }
             
             // 自動捲動時不處理工具列隱藏
             if (isAutoScrolling) {
@@ -1316,8 +1522,9 @@
             }
         });
 
-        // 點擊畫面中間也可以顯示/隱藏工具列
+        // 點擊畫面中間也可以顯示/隱藏工具列（只在手機版）
         mainContent.addEventListener('click', (e) => {
+            if (window.innerWidth > 768) return;
             if (e.target === chapterContent || chapterContent.contains(e.target)) {
                 header.classList.toggle('hidden');
                 footerNav.classList.toggle('hidden');
@@ -1428,6 +1635,228 @@
                 }
             }
         });
+
+        // ============ TTS 唸故事功能 ============
+        
+        // 載入語音列表
+        function loadTtsVoices() {
+            const voices = speechSynthesis.getVoices();
+            
+            // 篩選中文語音
+            ttsVoices = voices.filter(v => 
+                v.lang.includes('zh') || 
+                v.lang.includes('cmn') ||
+                v.name.toLowerCase().includes('chinese') ||
+                v.name.includes('中文')
+            );
+            
+            if (ttsVoices.length === 0) {
+                voiceSelect.innerHTML = '<option value="">無可用中文語音</option>';
+                return;
+            }
+            
+            // 更新下拉選單
+            voiceSelect.innerHTML = ttsVoices.map((v, i) => {
+                const region = v.lang.includes('TW') ? '(台灣)' 
+                    : v.lang.includes('HK') ? '(香港)' 
+                    : v.lang.includes('CN') ? '(中國)' 
+                    : '';
+                return `<option value="${i}">${v.name} ${region}</option>`;
+            }).join('');
+            
+            // 載入儲存的語音偏好
+            const savedVoiceIndex = localStorage.getItem('novel-ttsVoice');
+            if (savedVoiceIndex && parseInt(savedVoiceIndex) < ttsVoices.length) {
+                voiceSelect.value = savedVoiceIndex;
+                ttsSelectedVoice = ttsVoices[parseInt(savedVoiceIndex)];
+            } else {
+                ttsSelectedVoice = ttsVoices[0];
+            }
+        }
+        
+        // 語音載入（有些瀏覽器需要等待）
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = loadTtsVoices;
+        }
+        loadTtsVoices();
+        setTimeout(loadTtsVoices, 100);
+        setTimeout(loadTtsVoices, 500);
+        
+        // 語音選擇變更
+        voiceSelect.addEventListener('change', () => {
+            const index = parseInt(voiceSelect.value);
+            if (!isNaN(index) && ttsVoices[index]) {
+                ttsSelectedVoice = ttsVoices[index];
+                localStorage.setItem('novel-ttsVoice', index);
+            }
+        });
+        
+        // 語速選擇
+        document.querySelectorAll('.tts-rate-opt').forEach(btn => {
+            btn.addEventListener('click', () => {
+                ttsRate = parseFloat(btn.dataset.rate);
+                ttsRateValue.textContent = ttsRate + 'x';
+                document.querySelectorAll('.tts-rate-opt').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                localStorage.setItem('novel-ttsRate', ttsRate);
+            });
+        });
+        
+        // 載入 TTS 設定
+        function loadTtsSettings() {
+            const savedRate = localStorage.getItem('novel-ttsRate');
+            if (savedRate) {
+                ttsRate = parseFloat(savedRate);
+                ttsRateValue.textContent = ttsRate + 'x';
+            }
+            
+            // 更新按鈕狀態
+            document.querySelectorAll('.tts-rate-opt').forEach(btn => {
+                btn.classList.toggle('active', parseFloat(btn.dataset.rate) === ttsRate);
+            });
+        }
+        loadTtsSettings();
+        
+        // 清除 highlight
+        function clearTtsHighlight() {
+            chapterContent.querySelectorAll('p.tts-speaking').forEach(p => {
+                p.classList.remove('tts-speaking');
+            });
+        }
+        
+        // 唸一個段落
+        function speakParagraph(index) {
+            const paragraphs = chapterContent.querySelectorAll('p');
+            if (index >= paragraphs.length) {
+                // 唸完了
+                stopTts();
+                return;
+            }
+            
+            const p = paragraphs[index];
+            const text = p.textContent.trim();
+            
+            if (!text) {
+                // 空段落，跳到下一個
+                speakParagraph(index + 1);
+                return;
+            }
+            
+            // Highlight 目前段落
+            clearTtsHighlight();
+            p.classList.add('tts-speaking');
+            
+            // 捲動到該段落
+            p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // 建立語音
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.voice = ttsSelectedVoice;
+            utterance.lang = 'zh-TW';
+            utterance.rate = ttsRate;
+            
+            utterance.onend = () => {
+                if (ttsSpeaking) {
+                    ttsCurrentParagraphIndex = index + 1;
+                    speakParagraph(ttsCurrentParagraphIndex);
+                }
+            };
+            
+            utterance.onerror = (e) => {
+                console.error('TTS error:', e);
+                if (ttsSpeaking) {
+                    ttsCurrentParagraphIndex = index + 1;
+                    speakParagraph(ttsCurrentParagraphIndex);
+                }
+            };
+            
+            speechSynthesis.speak(utterance);
+        }
+        
+        // 開始唸故事
+        function startTts() {
+            if (ttsVoices.length === 0) {
+                alert('沒有可用的中文語音');
+                return;
+            }
+            
+            ttsSpeaking = true;
+            
+            // 從畫面中央的段落開始
+            const centerP = getCenterParagraph();
+            if (centerP) {
+                ttsCurrentParagraphIndex = parseInt(centerP.dataset.index);
+            } else {
+                ttsCurrentParagraphIndex = 0;
+            }
+            
+            speakParagraph(ttsCurrentParagraphIndex);
+            
+            // UI 更新
+            ttsStartBtn.textContent = '⏹️ 停止唸故事';
+            ttsStartBtn.classList.add('active');
+            ttsIndicator.classList.add('show');
+            ttsPopup.classList.remove('show');
+            
+            // 快捷按鈕變暗
+            quickTtsBtn.style.opacity = '0.4';
+            quickTtsBtn.style.pointerEvents = 'none';
+            
+            // 只在手機版收起工具列
+            if (window.innerWidth <= 768) {
+                header.classList.add('hidden');
+                footerNav.classList.add('hidden');
+            }
+        }
+        
+        // 停止唸故事
+        function stopTts() {
+            ttsSpeaking = false;
+            speechSynthesis.cancel();
+            clearTtsHighlight();
+            
+            // UI 更新
+            ttsStartBtn.textContent = '🔊 開始唸故事';
+            ttsStartBtn.classList.remove('active');
+            ttsIndicator.classList.remove('show');
+            
+            // 快捷按鈕恢復
+            quickTtsBtn.style.opacity = '1';
+            quickTtsBtn.style.pointerEvents = 'auto';
+        }
+        
+        // 設定按鈕
+        ttsBtn.addEventListener('click', () => {
+            ttsPopup.classList.toggle('show');
+            fontPopup.classList.remove('show');
+            scrollPopup.classList.remove('show');
+        });
+        
+        // 開始/停止按鈕
+        ttsStartBtn.addEventListener('click', () => {
+            if (ttsSpeaking) {
+                stopTts();
+            } else {
+                startTts();
+            }
+        });
+        
+        // 快捷按鈕
+        quickTtsBtn.addEventListener('click', () => {
+            startTts();
+        });
+        
+        // 指示器點擊停止
+        ttsIndicator.addEventListener('click', stopTts);
+        
+        // 切換章節時停止 TTS
+        const originalShowChapter = showChapter;
+        showChapter = async function(num) {
+            if (ttsSpeaking) {
+                stopTts();
+            }
+            return originalShowChapter(num);
+        };
     </script>
 </body>
 </html>
