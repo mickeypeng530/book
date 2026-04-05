@@ -1103,13 +1103,17 @@
             if (!userAvatar.contains(e.target) && !userDropdown.contains(e.target)) {
                 userDropdown.classList.remove('show');
             }
-            if (!fontPopup.contains(e.target) && !fontBtn.contains(e.target)) {
+            // 手機版從選單開啟的 popup 不要立即關閉
+            const isFromMenu = menuTtsSettings.contains(e.target) || 
+                               menuScrollSettings.contains(e.target) || 
+                               menuFontSettings.contains(e.target);
+            if (!fontPopup.contains(e.target) && !fontBtn.contains(e.target) && !menuFontSettings.contains(e.target)) {
                 fontPopup.classList.remove('show');
             }
-            if (!scrollPopup.contains(e.target) && !scrollBtn.contains(e.target)) {
+            if (!scrollPopup.contains(e.target) && !scrollBtn.contains(e.target) && !menuScrollSettings.contains(e.target)) {
                 scrollPopup.classList.remove('show');
             }
-            if (!ttsPopup.contains(e.target) && !ttsBtn.contains(e.target)) {
+            if (!ttsPopup.contains(e.target) && !ttsBtn.contains(e.target) && !menuTtsSettings.contains(e.target)) {
                 ttsPopup.classList.remove('show');
             }
         });
