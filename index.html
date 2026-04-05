@@ -2107,12 +2107,20 @@
         let isMusicPlaying = false;
 
         // 音量控制
-        musicVolumeSlider.addEventListener('input', () => {
+        function updateVolume() {
             const volume = musicVolumeSlider.value;
             musicVolumeValue.textContent = volume + '%';
             bgMusic.volume = volume / 100;
             localStorage.setItem('novel-musicVolume', volume);
+        }
+        
+        musicVolumeSlider.addEventListener('input', updateVolume);
+        musicVolumeSlider.addEventListener('change', updateVolume);
+        musicVolumeSlider.addEventListener('touchmove', (e) => {
+            e.stopPropagation();
+            updateVolume();
         });
+        musicVolumeSlider.addEventListener('touchend', updateVolume);
 
         // 播放/停止
         async function playMusic() {
