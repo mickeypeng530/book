@@ -2125,7 +2125,13 @@
                 musicPopup.classList.remove('show');
             } catch (err) {
                 console.error('取得音樂失敗:', err);
-                alert('無法播放音樂，請確認已登入');
+                if (err.code === 'storage/unauthorized') {
+                    alert('沒有權限播放音樂');
+                } else if (err.code === 'storage/object-not-found') {
+                    alert('找不到音樂檔案，請確認 Firebase Storage 中有上傳 music/ 資料夾');
+                } else {
+                    alert('播放失敗: ' + err.message);
+                }
             }
         }
 
