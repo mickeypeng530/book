@@ -654,45 +654,44 @@
 
         .music-slider {
             width: 100%;
-            margin-top: 5px;
-            height: 36px;
-            -webkit-appearance: none;
-            appearance: none;
-            background: transparent;
+            margin-top: 8px;
+            margin-bottom: 8px;
+            height: 44px;
+            padding: 10px 0;
             cursor: pointer;
-            touch-action: manipulation;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .music-slider::-webkit-slider-runnable-track {
-            height: 8px;
-            background: var(--border-color);
-            border-radius: 4px;
+        .volume-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .music-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            background: var(--button-bg);
+        .volume-controls .music-slider {
+            flex: 1;
+        }
+
+        .volume-btn {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--border-color);
             border-radius: 50%;
-            margin-top: -8px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-size: 20px;
+            font-weight: bold;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .music-slider::-moz-range-track {
-            height: 8px;
-            background: var(--border-color);
-            border-radius: 4px;
-        }
-
-        .music-slider::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
+        .volume-btn:active {
             background: var(--button-bg);
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
+            color: var(--button-text);
         }
 
         /* 音樂播放指示器 */
@@ -1024,7 +1023,11 @@
         </div>
         <div class="popup-section">
             <label>🔊 音量: <span id="musicVolumeValue">50%</span></label>
-            <input type="range" class="music-slider" id="musicVolumeSlider" min="0" max="100" step="5" value="50">
+            <div class="volume-controls">
+                <button class="volume-btn" id="volumeDown">−</button>
+                <input type="range" class="music-slider" id="musicVolumeSlider" min="0" max="100" step="10" value="50">
+                <button class="volume-btn" id="volumeUp">+</button>
+            </div>
         </div>
         <button class="scroll-start-btn" id="musicPlayBtn">▶️ 播放</button>
     </div>
@@ -2121,6 +2124,24 @@
             updateVolume();
         });
         musicVolumeSlider.addEventListener('touchend', updateVolume);
+
+        // 音量按鈕
+        const volumeDown = document.getElementById('volumeDown');
+        const volumeUp = document.getElementById('volumeUp');
+
+        volumeDown.addEventListener('click', () => {
+            let vol = parseInt(musicVolumeSlider.value) - 10;
+            if (vol < 0) vol = 0;
+            musicVolumeSlider.value = vol;
+            updateVolume();
+        });
+
+        volumeUp.addEventListener('click', () => {
+            let vol = parseInt(musicVolumeSlider.value) + 10;
+            if (vol > 100) vol = 100;
+            musicVolumeSlider.value = vol;
+            updateVolume();
+        });
 
         // 播放/停止
         async function playMusic() {
