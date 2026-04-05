@@ -978,10 +978,10 @@
         <div class="popup-section">
             <label>🎵 選擇音樂</label>
             <div class="music-list">
-                <div class="music-item" data-src="music/Traveler.mp3">旅人</div>
-                <div class="music-item" data-src="music/Old.mp3">紅顏舊</div>
-                <div class="music-item" data-src="music/Canon.mp3">Canon</div>
-                <div class="music-item" data-src="music/River.mp3">River Flow in You</div>
+                <div class="music-item" data-path="music/Traveler.mp3">旅人</div>
+                <div class="music-item" data-path="music/Old.mp3">紅顏舊</div>
+                <div class="music-item" data-path="music/Canon.mp3">Canon</div>
+                <div class="music-item" data-path="music/River.mp3">River Flow in You</div>
             </div>
         </div>
         <div class="popup-section">
@@ -1069,6 +1069,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getStorage, ref as storageRef, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
         
         // Firebase 設定
         const firebaseConfig = {
@@ -1084,6 +1085,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const auth = getAuth(app);
+        const storage = getStorage(app);
         const provider = new GoogleAuthProvider();
         
         // ============ 狀態 ============
@@ -2063,7 +2065,7 @@
         const bgMusic = document.getElementById('bgMusic');
         const menuMusicSettings = document.getElementById('menuMusicSettings');
         
-        let currentMusicSrc = null;
+        let currentMusicPath = null;
         let isMusicPlaying = false;
 
         // 音量控制
@@ -2075,42 +2077,56 @@
         });
 
         // 播放/停止
-        function playMusic() {
-            if (!currentMusicSrc) {
+        async function playMusic() {
+            if (!currentMusicPath) {
                 alert('請先選擇一首音樂');
                 return;
             }
             
-            // 如果換歌，先停止目前的
-            if (bgMusic.src && !bgMusic.src.endsWith(currentMusicSrc)) {
-                bgMusic.pause();
+            if (!currentUser) {
+                alert('請先登入才能播放音樂');
+                return;
             }
             
-            bgMusic.src = currentMusicSrc;
-            bgMusic.volume = musicVolumeSlider.value / 100;
-            
-            // 更新 UI 狀態
-            isMusicPlaying = true;
-            musicPlayBtn.textContent = '⏹️ 停止';
-            musicPlayBtn.classList.add('active');
-            musicIndicator.classList.add('show');
-            
-            // 更新音樂項目狀態
-            document.querySelectorAll('.music-item').forEach(i => {
-                i.classList.remove('playing');
-                if (i.dataset.src === currentMusicSrc) {
-                    i.classList.add('playing');
+            try {
+                // 從 Firebase Storage 取得下載 URL
+                const musicRef = storageRef(storage, currentMusicPath);
+                const url = await getDownloadURL(musicRef);
+                
+                // 如果換歌，先停止目前的
+                if (bgMusic.src && bgMusic.src !== url) {
+                    bgMusic.pause();
                 }
-            });
+                
+                bgMusic.src = url;
+                bgMusic.volume = musicVolumeSlider.value / 100;
+                
+                // 更新 UI 狀態
+                isMusicPlaying = true;
+                musicPlayBtn.textContent = '⏹️ 停止';
+                musicPlayBtn.classList.add('active');
+                musicIndicator.classList.add('show');
+                
+                // 更新音樂項目狀態
+                document.querySelectorAll('.music-item').forEach(i => {
+                    i.classList.remove('playing');
+                    if (i.dataset.path === currentMusicPath) {
+                        i.classList.add('playing');
+                    }
+                });
             
-            updateIndicatorPositions();
-            
-            bgMusic.play().catch(err => {
-                console.error('播放失敗:', err);
-                stopMusic();
-            });
-            
-            musicPopup.classList.remove('show');
+                updateIndicatorPositions();
+                
+                bgMusic.play().catch(err => {
+                    console.error('播放失敗:', err);
+                    stopMusic();
+                });
+                
+                musicPopup.classList.remove('show');
+            } catch (err) {
+                console.error('取得音樂失敗:', err);
+                alert('無法播放音樂，請確認已登入');
+            }
         }
 
         function stopMusic() {
@@ -2153,13 +2169,13 @@
         document.querySelectorAll('.music-item').forEach(item => {
             item.addEventListener('click', () => {
                 const wasPlaying = isMusicPlaying;
-                const newSrc = item.dataset.src;
+                const newPath = item.dataset.path;
                 
                 // 更新選擇狀態
                 document.querySelectorAll('.music-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
-                currentMusicSrc = newSrc;
-                localStorage.setItem('novel-musicSrc', currentMusicSrc);
+                currentMusicPath = newPath;
+                localStorage.setItem('novel-musicPath', currentMusicPath);
                 
                 // 如果正在播放，自動切換到新歌
                 if (wasPlaying) {
@@ -2195,11 +2211,11 @@
 
         // 載入音樂設定
         function loadMusicSettings() {
-            const savedMusicSrc = localStorage.getItem('novel-musicSrc');
-            if (savedMusicSrc) {
-                currentMusicSrc = savedMusicSrc;
+            const savedMusicPath = localStorage.getItem('novel-musicPath');
+            if (savedMusicPath) {
+                currentMusicPath = savedMusicPath;
                 document.querySelectorAll('.music-item').forEach(i => {
-                    i.classList.toggle('active', i.dataset.src === savedMusicSrc);
+                    i.classList.toggle('active', i.dataset.path === savedMusicPath);
                 });
             }
             
