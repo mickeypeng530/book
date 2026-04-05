@@ -692,6 +692,25 @@
                 padding: 6px 10px;
                 font-size: 13px;
             }
+            
+            /* 手機版隱藏設定按鈕 */
+            .desktop-only {
+                display: none !important;
+            }
+        }
+        
+        /* 電腦版隱藏選單內的設定項目 */
+        @media (min-width: 769px) {
+            .mobile-only {
+                display: none !important;
+            }
+        }
+        
+        /* 下拉選單分隔線 */
+        .user-dropdown-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 8px 0;
         }
     </style>
 </head>
@@ -726,7 +745,7 @@
                     <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
                 </svg>
             </button>
-            <button class="btn btn-icon" id="ttsBtn" title="唸故事設定">
+            <button class="btn btn-icon desktop-only" id="ttsBtn" title="唸故事設定">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
@@ -739,20 +758,20 @@
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                 </svg>
             </button>
-            <button class="btn btn-icon" id="scrollBtn" title="自動捲動設定">
+            <button class="btn btn-icon desktop-only" id="scrollBtn" title="自動捲動設定">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="3"></circle>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                 </svg>
             </button>
-            <button class="btn btn-icon" id="fontBtn" title="字體設定">
+            <button class="btn btn-icon desktop-only" id="fontBtn" title="字體設定">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="4 7 4 4 20 4 20 7"></polyline>
                     <line x1="9" y1="20" x2="15" y2="20"></line>
                     <line x1="12" y1="4" x2="12" y2="20"></line>
                 </svg>
             </button>
-            <button class="btn btn-icon" id="themeToggle" title="開關燈">
+            <button class="btn btn-icon desktop-only" id="themeToggle" title="開關燈">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-moon">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
@@ -771,6 +790,11 @@
             <div class="user-menu">
                 <img class="user-avatar" id="userAvatar" src="" alt="頭像">
                 <div class="user-dropdown" id="userDropdown">
+                    <div class="user-dropdown-item mobile-only" id="menuTtsSettings">🎙️ 唸故事設定</div>
+                    <div class="user-dropdown-item mobile-only" id="menuScrollSettings">⚙️ 捲動設定</div>
+                    <div class="user-dropdown-item mobile-only" id="menuFontSettings">🔤 字體設定</div>
+                    <div class="user-dropdown-item mobile-only" id="menuThemeToggle">🌙 開關燈</div>
+                    <div class="user-dropdown-divider mobile-only"></div>
                     <a class="user-dropdown-item" href="novel-uploader.html">📤 上傳章節</a>
                     <div class="user-dropdown-item" id="logoutBtn">🚪 登出</div>
                 </div>
@@ -1048,18 +1072,44 @@
             userDropdown.classList.remove('show');
         });
 
+        // 手機版選單項目點擊
+        const menuTtsSettings = document.getElementById('menuTtsSettings');
+        const menuScrollSettings = document.getElementById('menuScrollSettings');
+        const menuFontSettings = document.getElementById('menuFontSettings');
+        const menuThemeToggle = document.getElementById('menuThemeToggle');
+
+        menuTtsSettings.addEventListener('click', () => {
+            userDropdown.classList.remove('show');
+            ttsPopup.classList.toggle('show');
+        });
+
+        menuScrollSettings.addEventListener('click', () => {
+            userDropdown.classList.remove('show');
+            scrollPopup.classList.toggle('show');
+        });
+
+        menuFontSettings.addEventListener('click', () => {
+            userDropdown.classList.remove('show');
+            fontPopup.classList.toggle('show');
+        });
+
+        menuThemeToggle.addEventListener('click', () => {
+            userDropdown.classList.remove('show');
+            toggleTheme();
+        });
+
         // 點其他地方關閉選單
         document.addEventListener('click', (e) => {
             if (!userAvatar.contains(e.target) && !userDropdown.contains(e.target)) {
                 userDropdown.classList.remove('show');
             }
-            if (!fontPopup.contains(e.target) && e.target !== fontBtn) {
+            if (!fontPopup.contains(e.target) && !fontBtn.contains(e.target)) {
                 fontPopup.classList.remove('show');
             }
-            if (!scrollPopup.contains(e.target) && e.target !== scrollBtn) {
+            if (!scrollPopup.contains(e.target) && !scrollBtn.contains(e.target)) {
                 scrollPopup.classList.remove('show');
             }
-            if (!ttsPopup.contains(e.target) && e.target !== ttsBtn) {
+            if (!ttsPopup.contains(e.target) && !ttsBtn.contains(e.target)) {
                 ttsPopup.classList.remove('show');
             }
         });
