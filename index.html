@@ -112,10 +112,10 @@
         }
 
         .btn-icon {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             padding: 0;
-            font-size: 18px;
+            font-size: 16px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -587,10 +587,9 @@
         }
 
         /* RWD */
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             .header h1 {
-                max-width: 120px;
-                font-size: 1rem;
+                display: none;
             }
             
             .chapter-content {
@@ -605,12 +604,6 @@
             .btn {
                 padding: 6px 10px;
                 font-size: 13px;
-            }
-            
-            .btn-icon {
-                width: 36px;
-                height: 36px;
-                font-size: 16px;
             }
         }
     </style>
@@ -633,7 +626,8 @@
             <h1 id="bookTitle">小說閱讀器</h1>
         </div>
         <div class="header-controls">
-            <button class="btn btn-icon" id="scrollBtn" title="自動捲動">📜</button>
+            <button class="btn btn-icon" id="quickScrollBtn" title="開始自動捲動">▶️</button>
+            <button class="btn btn-icon" id="scrollBtn" title="自動捲動設定">📜</button>
             <button class="btn btn-icon" id="fontBtn" title="字體設定">A</button>
             <button class="btn btn-icon" id="themeToggle" title="開關燈">🌙</button>
             <div class="user-menu">
@@ -694,10 +688,10 @@
         <div class="popup-section">
             <label>📏 每次幾行</label>
             <div class="scroll-options">
-                <button class="scroll-opt" data-lines="5">5行</button>
-                <button class="scroll-opt" data-lines="10">10行</button>
+                <button class="scroll-opt" data-lines="6">6行</button>
+                <button class="scroll-opt" data-lines="9">9行</button>
+                <button class="scroll-opt" data-lines="12">12行</button>
                 <button class="scroll-opt" data-lines="15">15行</button>
-                <button class="scroll-opt" data-lines="20">20行</button>
             </div>
         </div>
         <button class="scroll-start-btn" id="scrollStartBtn">▶️ 開始自動捲動</button>
@@ -772,7 +766,7 @@
         let autoScrollInterval = null;
         let scrollIntervalTime = 15;  // 秒（預設15）
         let scrollSpeed = 3;          // 秒（預設3）
-        let scrollLines = 10;         // 行
+        let scrollLines = 9;          // 行（預設9）
         let isAutoScrolling = false;  // 用來暫停工具列偵測
         
         // 書籤狀態
@@ -804,6 +798,7 @@
         const userAvatar = document.getElementById('userAvatar');
         const userDropdown = document.getElementById('userDropdown');
         const logoutBtn = document.getElementById('logoutBtn');
+        const quickScrollBtn = document.getElementById('quickScrollBtn');
         const scrollBtn = document.getElementById('scrollBtn');
         const scrollPopup = document.getElementById('scrollPopup');
         const scrollStartBtn = document.getElementById('scrollStartBtn');
@@ -1077,6 +1072,11 @@
             scrollStartBtn.classList.add('active');
             scrollIndicator.classList.add('show');
             scrollPopup.classList.remove('show');
+            
+            // 隱藏快捷按鈕、自動收起工具列
+            quickScrollBtn.style.display = 'none';
+            header.classList.add('hidden');
+            footerNav.classList.add('hidden');
         }
 
         function stopAutoScroll() {
@@ -1088,7 +1088,15 @@
             scrollStartBtn.textContent = '▶️ 開始自動捲動';
             scrollStartBtn.classList.remove('active');
             scrollIndicator.classList.remove('show');
+            
+            // 顯示快捷按鈕
+            quickScrollBtn.style.display = 'flex';
         }
+
+        // 快捷按鈕點擊
+        quickScrollBtn.addEventListener('click', () => {
+            startAutoScroll();
+        });
 
         scrollStartBtn.addEventListener('click', () => {
             if (autoScrollInterval) {
