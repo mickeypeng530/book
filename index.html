@@ -112,14 +112,23 @@
         }
 
         .btn-icon {
-            width: 36px;
-            height: 36px;
+            width: 42px;
+            height: 42px;
             padding: 0;
-            font-size: 16px;
+            font-size: 18px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        /* 手機版 icon 較小 */
+        @media (max-width: 768px) {
+            .btn-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
         }
 
         /* 登入區 */
@@ -548,11 +557,18 @@
         }
 
         .user-avatar {
-            width: 36px;
-            height: 36px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             cursor: pointer;
             border: 2px solid var(--border-color);
+        }
+
+        @media (max-width: 768px) {
+            .user-avatar {
+                width: 36px;
+                height: 36px;
+            }
         }
 
         .user-dropdown {
@@ -765,8 +781,8 @@
         // 自動捲動狀態
         let autoScrollInterval = null;
         let scrollIntervalTime = 15;  // 秒（預設15）
-        let scrollSpeed = 3;          // 秒（預設3）
-        let scrollLines = 9;          // 行（預設9）
+        let scrollSpeed = 4;          // 秒（預設4）
+        let scrollLines = 6;          // 行（預設6）
         let isAutoScrolling = false;  // 用來暫停工具列偵測
         
         // 書籤狀態
@@ -1073,8 +1089,9 @@
             scrollIndicator.classList.add('show');
             scrollPopup.classList.remove('show');
             
-            // 隱藏快捷按鈕、自動收起工具列
-            quickScrollBtn.style.display = 'none';
+            // 快捷按鈕變暗、自動收起工具列
+            quickScrollBtn.style.opacity = '0.4';
+            quickScrollBtn.style.pointerEvents = 'none';
             header.classList.add('hidden');
             footerNav.classList.add('hidden');
         }
@@ -1089,8 +1106,9 @@
             scrollStartBtn.classList.remove('active');
             scrollIndicator.classList.remove('show');
             
-            // 顯示快捷按鈕
-            quickScrollBtn.style.display = 'flex';
+            // 快捷按鈕恢復
+            quickScrollBtn.style.opacity = '1';
+            quickScrollBtn.style.pointerEvents = 'auto';
         }
 
         // 快捷按鈕點擊
