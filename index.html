@@ -694,6 +694,30 @@
             color: var(--button-text);
         }
 
+        .play-mode-opt {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            color: var(--text-color);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .play-mode-opt.active {
+            background: var(--button-bg);
+            color: var(--button-text);
+            border-color: var(--button-bg);
+        }
+
+        /* iOS/手機版隱藏音量控制 */
+        @media (max-width: 1024px) {
+            .volume-section {
+                display: none;
+            }
+        }
+
         /* 音樂播放指示器 */
         .music-indicator {
             position: fixed;
@@ -1022,6 +1046,13 @@
             </div>
         </div>
         <div class="popup-section">
+            <label>🔄 播放模式</label>
+            <div class="scroll-options">
+                <button class="play-mode-opt active" data-mode="single">單曲循環</button>
+                <button class="play-mode-opt" data-mode="playlist">輪播</button>
+            </div>
+        </div>
+        <div class="popup-section volume-section">
             <label>🔊 音量: <span id="musicVolumeValue">50%</span></label>
             <div class="volume-controls">
                 <button class="volume-btn" id="volumeDown">−</button>
@@ -1033,7 +1064,7 @@
     </div>
 
     <!-- 背景音樂播放器 (隱藏) -->
-    <audio id="bgMusic" loop></audio>
+    <audio id="bgMusic"></audio>
 
     <!-- TTS 播放指示器 -->
     <div class="tts-indicator" id="ttsIndicator">
@@ -2108,6 +2139,52 @@
         
         let currentMusicPath = null;
         let isMusicPlaying = false;
+        let playMode = 'single'; // 'single' 單曲循環, 'playlist' 輪播
+        const musicList = ['Traveler.mp3', 'Old.mp3', 'Canon.mp3', 'River.mp3'];
+
+        // 播放模式切換
+        document.querySelectorAll('.play-mode-opt').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.play-mode-opt').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                playMode = btn.dataset.mode;
+                localStorage.setItem('novel-playMode', playMode);
+                
+                // 更新 loop 屬性
+                bgMusic.loop = (playMode === 'single');
+            });
+        });
+
+        // 輪播：歌曲結束時播下一首
+        bgMusic.addEventListener('ended', async () => {
+            if (playMode === 'playlist' && isMusicPlaying) {
+                // 找下一首
+                const currentIndex = musicList.indexOf(currentMusicPath);
+                const nextIndex = (currentIndex + 1) % musicList.length;
+                currentMusicPath = musicList[nextIndex];
+                
+                // 更新 UI
+                document.querySelectorAll('.music-item').forEach(i => {
+                    i.classList.remove('active', 'playing');
+                    if (i.dataset.path === currentMusicPath) {
+                        i.classList.add('active', 'playing');
+                    }
+                });
+                
+                localStorage.setItem('novel-musicPath', currentMusicPath);
+                
+                // 播放下一首
+                try {
+                    const musicRef = storageRef(storage, currentMusicPath);
+                    const url = await getDownloadURL(musicRef);
+                    bgMusic.src = url;
+                    bgMusic.play();
+                } catch (err) {
+                    console.error('播放下一首失敗:', err);
+                    stopMusic();
+                }
+            }
+        });
 
         // 音量控制
         function updateVolume() {
@@ -2167,6 +2244,7 @@
                 
                 bgMusic.src = url;
                 bgMusic.volume = musicVolumeSlider.value / 100;
+                bgMusic.loop = (playMode === 'single'); // 單曲循環時啟用 loop
                 
                 // 更新 UI 狀態
                 isMusicPlaying = true;
@@ -2296,6 +2374,15 @@
             if (savedVolume) {
                 musicVolumeSlider.value = savedVolume;
                 musicVolumeValue.textContent = savedVolume + '%';
+            }
+            
+            // 載入播放模式
+            const savedPlayMode = localStorage.getItem('novel-playMode');
+            if (savedPlayMode) {
+                playMode = savedPlayMode;
+                document.querySelectorAll('.play-mode-opt').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === savedPlayMode);
+                });
             }
         }
         loadMusicSettings();
