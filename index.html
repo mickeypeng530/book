@@ -527,11 +527,11 @@
         /* 自動捲動指示器 */
         .scroll-indicator {
             position: fixed;
-            top: 80px;
+            top: 70px;
             right: 10px;
             width: 36px;
             height: 36px;
-            background: rgba(74, 222, 128, 0.6);
+            background: rgba(74, 222, 128, 0.35);
             color: #000;
             border-radius: 50%;
             font-size: 16px;
@@ -544,7 +544,7 @@
         }
 
         .scroll-indicator:hover {
-            background: rgba(74, 222, 128, 0.9);
+            background: rgba(74, 222, 128, 0.7);
         }
 
         .scroll-indicator.show {
@@ -554,11 +554,11 @@
         /* TTS 指示器 */
         .tts-indicator {
             position: fixed;
-            top: 125px;
+            top: 70px;
             right: 10px;
             width: 36px;
             height: 36px;
-            background: rgba(99, 102, 241, 0.6);
+            background: rgba(99, 102, 241, 0.35);
             color: #fff;
             border-radius: 50%;
             font-size: 16px;
@@ -571,7 +571,7 @@
         }
 
         .tts-indicator:hover {
-            background: rgba(99, 102, 241, 0.9);
+            background: rgba(99, 102, 241, 0.7);
         }
 
         .tts-indicator.show {
@@ -660,11 +660,11 @@
         /* 音樂播放指示器 */
         .music-indicator {
             position: fixed;
-            top: 170px;
+            top: 70px;
             right: 10px;
             width: 36px;
             height: 36px;
-            background: rgba(74, 222, 128, 0.6);
+            background: rgba(74, 222, 128, 0.35);
             color: #000;
             border-radius: 50%;
             font-size: 14px;
@@ -677,11 +677,33 @@
         }
 
         .music-indicator:hover {
-            background: rgba(74, 222, 128, 0.9);
+            background: rgba(74, 222, 128, 0.7);
         }
 
         .music-indicator.show {
             display: flex;
+        }
+
+        /* 手機版指示器位置調整 */
+        @media (max-width: 1024px) {
+            .scroll-indicator {
+                top: 65px;
+                right: 5px;
+                width: 32px;
+                height: 32px;
+            }
+            .tts-indicator {
+                top: 65px;
+                right: 5px;
+                width: 32px;
+                height: 32px;
+            }
+            .music-indicator {
+                top: 65px;
+                right: 5px;
+                width: 32px;
+                height: 32px;
+            }
         }
 
         /* 用戶選單 */
@@ -1451,6 +1473,11 @@
             scrollIndicator.classList.add('show');
             scrollPopup.classList.remove('show');
             
+            // 更新指示器位置
+            if (typeof updateIndicatorPositions === 'function') {
+                updateIndicatorPositions();
+            }
+            
             // 快捷按鈕變暗
             quickScrollBtn.style.opacity = '0.4';
             quickScrollBtn.style.pointerEvents = 'none';
@@ -1471,6 +1498,11 @@
             scrollStartBtn.textContent = '▶️ 開始自動捲動';
             scrollStartBtn.classList.remove('active');
             scrollIndicator.classList.remove('show');
+            
+            // 更新指示器位置
+            if (typeof updateIndicatorPositions === 'function') {
+                updateIndicatorPositions();
+            }
             
             // 快捷按鈕恢復
             quickScrollBtn.style.opacity = '1';
@@ -2071,6 +2103,8 @@
                 }
             });
             
+            updateIndicatorPositions();
+            
             bgMusic.play().catch(err => {
                 console.error('播放失敗:', err);
                 stopMusic();
@@ -2091,6 +2125,28 @@
             document.querySelectorAll('.music-item').forEach(i => {
                 i.classList.remove('playing');
             });
+            
+            updateIndicatorPositions();
+        }
+
+        // 動態調整指示器位置
+        function updateIndicatorPositions() {
+            const scrollShowing = scrollIndicator.classList.contains('show');
+            const musicShowing = musicIndicator.classList.contains('show');
+            const isMobile = window.innerWidth <= 1024;
+            
+            const baseTop = isMobile ? 65 : 70;
+            const gap = isMobile ? 38 : 45;
+            
+            // 捲動指示器永遠在最上面
+            scrollIndicator.style.top = baseTop + 'px';
+            
+            // 音樂指示器：有捲動時往下移
+            if (scrollShowing && musicShowing) {
+                musicIndicator.style.top = (baseTop + gap) + 'px';
+            } else {
+                musicIndicator.style.top = baseTop + 'px';
+            }
         }
 
         // 點擊歌曲時，如果正在播放就自動切換
