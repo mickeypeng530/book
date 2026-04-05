@@ -655,6 +655,44 @@
         .music-slider {
             width: 100%;
             margin-top: 5px;
+            height: 36px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .music-slider::-webkit-slider-runnable-track {
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .music-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--button-bg);
+            border-radius: 50%;
+            margin-top: -8px;
+            cursor: pointer;
+        }
+
+        .music-slider::-moz-range-track {
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .music-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: var(--button-bg);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
         }
 
         /* 音樂播放指示器 */
