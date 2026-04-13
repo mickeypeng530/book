@@ -1121,6 +1121,12 @@
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
             </svg>
         </button>
+        <button class="btn btn-icon" id="scrollToBottomBtn" title="跳到底部">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="7 13 12 18 17 13"></polyline>
+                <polyline points="7 6 12 11 17 6"></polyline>
+            </svg>
+        </button>
         <button class="btn" id="nextChapter">
             下一章
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 4px;">
@@ -1349,9 +1355,12 @@
             }
             
             // 載入閱讀進度
+            let savedParagraph = null;
             const progressSnap = await get(ref(db, 'novel/progress'));
             if (progressSnap.exists()) {
-                currentChapterIndex = progressSnap.val().chapter || chapters[0]?.num || 1;
+                const progress = progressSnap.val();
+                currentChapterIndex = progress.chapter || chapters[0]?.num || 1;
+                savedParagraph = progress.paragraph || null;
             } else if (chapters.length > 0) {
                 currentChapterIndex = chapters[0].num;
             }
@@ -1359,7 +1368,21 @@
             // 顯示章節
             if (chapters.length > 0) {
                 loadingScreen.style.display = 'none';
-                showChapter(currentChapterIndex);
+                await showChapter(currentChapterIndex);
+                
+                // 如果有儲存的段落位置，跳轉到該位置
+                if (savedParagraph !== null) {
+                    setTimeout(() => {
+                        const targetP = chapterContent.querySelector(`p[data-index="${savedParagraph}"]`);
+                        if (targetP) {
+                            targetP.scrollIntoView({ behavior: 'auto', block: 'center' });
+                            console.log(`恢復閱讀位置: 第${currentChapterIndex}章 第${savedParagraph}段`);
+                        }
+                    }, 100);
+                }
+                
+                // 啟動自動存檔
+                startAutoSave();
             } else {
                 loadingScreen.innerHTML = `
                     <p>尚未上傳小說</p>
@@ -1513,6 +1536,7 @@
             if (autoScrollInterval) return;
             
             isAutoScrolling = true;
+            let scrollCount = 0; // 計數器，避免剛開始就判斷到底
             
             function doScroll() {
                 // 每次捲動時即時計算，這樣調整參數會立即生效
@@ -1521,9 +1545,10 @@
                 const scrollDistance = lineHeight * scrollLines;
                 
                 smoothScrollBy(scrollDistance, scrollSpeed * 1000);
+                scrollCount++;
                 
-                // 檢查是否到底部
-                if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight - 100) {
+                // 至少捲動 3 次後才檢查是否到底部（避免換章後誤判）
+                if (scrollCount > 3 && (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 100) {
                     stopAutoScroll();
                 }
             }
@@ -1714,6 +1739,77 @@
             chapterProgress.textContent = `${currentChapterIndex} 章 (${percent}%)`;
         }
 
+        // ============ 自動記錄閱讀位置（每3分鐘） ============
+        let autoSaveInterval = null;
+        
+        function getCurrentParagraphIndex() {
+            // 找出目前畫面中央的段落
+            const paragraphs = chapterContent.querySelectorAll('p[data-index]');
+            const viewportCenter = window.innerHeight / 2;
+            
+            for (const p of paragraphs) {
+                const rect = p.getBoundingClientRect();
+                if (rect.top <= viewportCenter && rect.bottom >= viewportCenter) {
+                    return parseInt(p.dataset.index);
+                }
+            }
+            
+            // 如果沒找到，找最接近的
+            let closestIndex = 0;
+            let closestDistance = Infinity;
+            paragraphs.forEach(p => {
+                const rect = p.getBoundingClientRect();
+                const distance = Math.abs(rect.top - viewportCenter);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestIndex = parseInt(p.dataset.index);
+                }
+            });
+            
+            return closestIndex;
+        }
+        
+        async function saveReadingPosition() {
+            if (!currentUser || chapters.length === 0) return;
+            
+            const paragraphIndex = getCurrentParagraphIndex();
+            
+            try {
+                await set(ref(db, 'novel/progress'), {
+                    chapter: currentChapterIndex,
+                    paragraph: paragraphIndex,
+                    updatedAt: Date.now()
+                });
+                console.log(`自動存檔: 第${currentChapterIndex}章 第${paragraphIndex}段`);
+            } catch (err) {
+                console.error('自動存檔失敗:', err);
+            }
+        }
+        
+        function startAutoSave() {
+            if (autoSaveInterval) return;
+            // 每 3 分鐘存一次
+            autoSaveInterval = setInterval(saveReadingPosition, 3 * 60 * 1000);
+        }
+        
+        function stopAutoSave() {
+            if (autoSaveInterval) {
+                clearInterval(autoSaveInterval);
+                autoSaveInterval = null;
+            }
+        }
+        
+        // 頁面關閉/隱藏時也存一次
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                saveReadingPosition();
+            }
+        });
+        
+        window.addEventListener('beforeunload', () => {
+            saveReadingPosition();
+        });
+
         // ============ 上下章 ============
         function goToPrevChapter() {
             const currentIndex = chapters.findIndex(ch => ch.num === currentChapterIndex);
@@ -1731,6 +1827,15 @@
 
         prevBtn.addEventListener('click', goToPrevChapter);
         nextBtn.addEventListener('click', goToNextChapter);
+
+        // 跳到底部
+        const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
+        scrollToBottomBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: document.body.scrollHeight,
+                behavior: 'smooth'
+            });
+        });
 
         // 鍵盤快捷鍵
         document.addEventListener('keydown', (e) => {
