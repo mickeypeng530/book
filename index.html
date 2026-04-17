@@ -313,6 +313,26 @@
             transform: translateY(100%);
         }
 
+        /* 手機版底部導航：只顯示圖示 */
+        @media (max-width: 768px) {
+            .footer-nav {
+                gap: 8px;
+            }
+            .footer-nav .btn {
+                padding: 8px 10px;
+            }
+            .footer-nav .btn-text {
+                display: none;
+            }
+            .footer-nav .btn svg {
+                margin: 0;
+            }
+            .chapter-progress {
+                min-width: auto;
+                font-size: 12px;
+            }
+        }
+
         .chapter-progress {
             font-size: 14px;
             min-width: 100px;
@@ -718,6 +738,42 @@
             }
         }
 
+        /* 下一章倒數提示 */
+        .next-chapter-countdown {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--button-bg);
+            color: var(--button-text);
+            padding: 12px 20px;
+            border-radius: 25px;
+            display: none;
+            align-items: center;
+            gap: 15px;
+            z-index: 102;
+            box-shadow: 0 4px 15px var(--shadow);
+            font-size: 14px;
+        }
+
+        .next-chapter-countdown.show {
+            display: flex;
+        }
+
+        .next-chapter-countdown button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: inherit;
+            padding: 6px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .next-chapter-countdown button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
         /* 音樂播放指示器 */
         .music-indicator {
             position: fixed;
@@ -1110,10 +1166,10 @@
     <!-- 底部導航 -->
     <nav class="footer-nav" id="footerNav">
         <button class="btn" id="prevChapter">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
-            上一章
+            <span class="btn-text">上一章</span>
         </button>
         <span class="chapter-progress" id="chapterProgress">- 章 (0%)</span>
         <button class="btn btn-icon bookmark-btn" id="bookmarkBtn" title="加入書籤">
@@ -1128,8 +1184,8 @@
             </svg>
         </button>
         <button class="btn" id="nextChapter">
-            下一章
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 4px;">
+            <span class="btn-text">下一章</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
         </button>
@@ -1141,6 +1197,12 @@
             <rect x="6" y="4" width="4" height="16"></rect>
             <rect x="14" y="4" width="4" height="16"></rect>
         </svg>
+    </div>
+
+    <!-- 下一章倒數提示 -->
+    <div class="next-chapter-countdown" id="nextChapterCountdown">
+        <span id="countdownText">10 秒後下一章</span>
+        <button id="cancelCountdown">取消</button>
     </div>
 
     <script type="module">
@@ -1548,8 +1610,14 @@
                 scrollCount++;
                 
                 // 至少捲動 3 次後才檢查是否到底部（避免換章後誤判）
-                if (scrollCount > 3 && (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 100) {
+                // 同時確保頁面高度大於視窗高度（內容已載入）
+                const pageHeight = document.body.scrollHeight;
+                const viewportHeight = window.innerHeight;
+                if (scrollCount > 3 && pageHeight > viewportHeight * 1.5 && 
+                    (viewportHeight + window.scrollY) >= pageHeight - 100) {
+                    // 到底部了，啟動倒數
                     stopAutoScroll();
+                    startNextChapterCountdown();
                 }
             }
             
@@ -1563,9 +1631,13 @@
                 }, scrollIntervalTime * 1000);
             }
             
-            // 立即執行第一次，然後開始排程
-            doScroll();
-            scheduleNext();
+            // 延遲 500ms 才開始，確保換章後頁面內容已載入
+            setTimeout(() => {
+                if (isAutoScrolling) {
+                    doScroll();
+                    scheduleNext();
+                }
+            }, 500);
             
             scrollStartBtn.textContent = '⏹️ 停止自動捲動';
             scrollStartBtn.classList.add('active');
@@ -1587,6 +1659,53 @@
                 footerNav.classList.add('hidden');
             }
         }
+
+        // ============ 下一章倒數功能 ============
+        const nextChapterCountdown = document.getElementById('nextChapterCountdown');
+        const countdownText = document.getElementById('countdownText');
+        const cancelCountdown = document.getElementById('cancelCountdown');
+        let countdownTimer = null;
+        let countdownSeconds = 10;
+
+        function startNextChapterCountdown() {
+            // 檢查是否有下一章
+            const currentIndex = chapters.findIndex(ch => ch.num === currentChapterIndex);
+            if (currentIndex >= chapters.length - 1) {
+                // 沒有下一章了
+                return;
+            }
+            
+            countdownSeconds = 10;
+            countdownText.textContent = `${countdownSeconds} 秒後下一章`;
+            nextChapterCountdown.classList.add('show');
+            
+            countdownTimer = setInterval(() => {
+                countdownSeconds--;
+                countdownText.textContent = `${countdownSeconds} 秒後下一章`;
+                
+                if (countdownSeconds <= 0) {
+                    clearInterval(countdownTimer);
+                    countdownTimer = null;
+                    nextChapterCountdown.classList.remove('show');
+                    
+                    // 跳下一章並繼續播放
+                    goToNextChapter();
+                    setTimeout(() => {
+                        startAutoScroll();
+                    }, 800);
+                }
+            }, 1000);
+        }
+
+        function cancelNextChapterCountdown() {
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
+            nextChapterCountdown.classList.remove('show');
+        }
+
+        cancelCountdown.addEventListener('click', cancelNextChapterCountdown);
 
         function stopAutoScroll() {
             if (autoScrollInterval) {
