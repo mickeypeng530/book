@@ -1595,7 +1595,11 @@
         }
 
         function startAutoScroll() {
-            if (autoScrollInterval) return;
+            // 確保之前的狀態已清除
+            if (autoScrollInterval) {
+                clearTimeout(autoScrollInterval);
+                autoScrollInterval = null;
+            }
             
             isAutoScrolling = true;
             let scrollCount = 0; // 計數器，避免剛開始就判斷到底
@@ -1631,14 +1635,7 @@
                 }, scrollIntervalTime * 1000);
             }
             
-            // 延遲 500ms 才開始，確保換章後頁面內容已載入
-            setTimeout(() => {
-                if (isAutoScrolling) {
-                    doScroll();
-                    scheduleNext();
-                }
-            }, 500);
-            
+            // 更新 UI 狀態（先更新，讓使用者知道已啟動）
             scrollStartBtn.textContent = '⏹️ 停止自動捲動';
             scrollStartBtn.classList.add('active');
             scrollIndicator.classList.add('show');
@@ -1658,6 +1655,14 @@
                 header.classList.add('hidden');
                 footerNav.classList.add('hidden');
             }
+            
+            // 延遲 500ms 才開始，確保換章後頁面內容已載入
+            setTimeout(() => {
+                if (isAutoScrolling) {
+                    doScroll();
+                    scheduleNext();
+                }
+            }, 500);
         }
 
         // ============ 下一章倒數功能 ============
