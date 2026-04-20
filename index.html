@@ -1665,7 +1665,7 @@
         const countdownText = document.getElementById('countdownText');
         const cancelCountdown = document.getElementById('cancelCountdown');
         let countdownTimer = null;
-        let countdownSeconds = 10;
+        let countdownSeconds = 8;
 
         function startNextChapterCountdown() {
             // 檢查是否有下一章
@@ -1675,11 +1675,11 @@
                 return;
             }
             
-            countdownSeconds = 10;
+            countdownSeconds = 8;
             countdownText.textContent = `${countdownSeconds} 秒後下一章`;
             nextChapterCountdown.classList.add('show');
             
-            countdownTimer = setInterval(() => {
+            countdownTimer = setInterval(async () => {
                 countdownSeconds--;
                 countdownText.textContent = `${countdownSeconds} 秒後下一章`;
                 
@@ -1689,10 +1689,11 @@
                     nextChapterCountdown.classList.remove('show');
                     
                     // 跳下一章並繼續播放
-                    goToNextChapter();
+                    await goToNextChapter();
+                    // 等待頁面渲染完成後再開始自動捲動
                     setTimeout(() => {
                         startAutoScroll();
-                    }, 800);
+                    }, 1000);
                 }
             }, 1000);
         }
@@ -1937,10 +1938,10 @@
             }
         }
 
-        function goToNextChapter() {
+        async function goToNextChapter() {
             const currentIndex = chapters.findIndex(ch => ch.num === currentChapterIndex);
             if (currentIndex < chapters.length - 1) {
-                showChapter(chapters[currentIndex + 1].num);
+                await showChapter(chapters[currentIndex + 1].num);
             }
         }
 
