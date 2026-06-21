@@ -916,6 +916,83 @@
             background: var(--border-color);
             margin: 8px 0;
         }
+
+        /* 書架 modal */
+        .shelf-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 20px;
+        }
+        .shelf-overlay.show { display: flex; }
+        .shelf-modal {
+            background: var(--header-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 420px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px var(--shadow);
+            padding: 18px;
+        }
+        .shelf-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 14px;
+        }
+        .shelf-close {
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .shelf-books {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .shelf-book {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 14px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .shelf-book:hover { background: var(--bg-color); }
+        .shelf-book.current {
+            border-color: var(--button-bg);
+            background: var(--button-bg);
+            color: var(--button-text);
+        }
+        .shelf-book-title { font-size: 15px; font-weight: 600; }
+        .shelf-book-meta { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+        .shelf-book-badge { font-size: 12px; opacity: 0.8; white-space: nowrap; }
+        .shelf-upload-link {
+            display: block;
+            text-align: center;
+            margin-top: 16px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px dashed var(--border-color);
+            color: var(--text-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .shelf-upload-link:hover { background: var(--bg-color); }
     </style>
 </head>
 <body>
@@ -1007,6 +1084,7 @@
                     <div class="user-dropdown-item mobile-only" id="menuFontSettings">🔤 字體設定</div>
                     <div class="user-dropdown-item mobile-only" id="menuThemeToggle">🌙 開關燈</div>
                     <div class="user-dropdown-divider mobile-only"></div>
+                    <div class="user-dropdown-item" id="menuBookShelf">📚 書架（切換書）</div>
                     <a class="user-dropdown-item" href="novel-uploader.html">📤 上傳章節</a>
                     <div class="user-dropdown-item" id="logoutBtn">🚪 登出</div>
                 </div>
@@ -1205,6 +1283,18 @@
         <button id="cancelCountdown">取消</button>
     </div>
 
+    <!-- 書架（切換書） -->
+    <div class="shelf-overlay" id="shelfOverlay">
+        <div class="shelf-modal">
+            <div class="shelf-modal-header">
+                <span>📚 我的書架</span>
+                <button class="shelf-close" id="shelfClose">✕</button>
+            </div>
+            <div class="shelf-books" id="shelfBooks"></div>
+            <a class="shelf-upload-link" href="novel-uploader.html">➕ 新增 / 管理書籍</a>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -1233,6 +1323,21 @@
         let chapters = [];
         let totalChapters = 0;
         let currentChapterIndex = 1;
+
+        // 多書狀態
+        let currentBookId = 'fanren';   // 目前這本書的 id
+        let bookDataPath = 'novel';      // 這本書 chapters/info 的根路徑（凡人沿用舊路徑）
+        let shelf = {};                  // 書架登記表 { id: {title, author, dataPath, order} }
+        let bookmarkListenerUnsub = null;// onValue 退訂 function
+        let resumeParagraph = null;      // 開書時要跳到的段落（進度 fallback 用）
+
+        // ============ 資料路徑 helper（依目前書切換） ============
+        const infoRef     = () => ref(db, `${bookDataPath}/info`);
+        const chaptersRef = () => ref(db, `${bookDataPath}/chapters`);
+        const chapterRef  = (n) => ref(db, `${bookDataPath}/chapters/${n}`);
+        const tocRef      = () => ref(db, `${bookDataPath}/toc`);  // 輕量目錄 {章號:標題}
+        const bookmarkRef = () => ref(db, `novel/state/${currentBookId}/bookmark`);
+        const progressRef = () => ref(db, `novel/state/${currentBookId}/progress`);
         let fontSize = 20;
         let fontWeight = 500;
         let isDarkMode = false;
@@ -1306,9 +1411,15 @@
                 footerNav.classList.add('show');
                 
                 userAvatar.src = user.photoURL || '';
-                
-                // 載入小說
-                await loadNovel();
+
+                // 載入閱讀設定（字體/主題/捲動等，一次性）
+                loadSettings();
+                // 確保書架登記表存在（含舊版凡人資料搬移）
+                await ensureShelf();
+                // 接續上次讀的那本書
+                const lastSnap = await get(ref(db, 'novel/state/lastBook'));
+                const lastBook = (lastSnap.exists() && shelf[lastSnap.val()]) ? lastSnap.val() : 'fanren';
+                await loadBook(lastBook);
             } else {
                 currentUser = null;
                 loginScreen.style.display = 'flex';
@@ -1391,69 +1502,174 @@
             }
         });
 
-        // ============ 載入小說 ============
-        async function loadNovel() {
-            loadSettings();
-            
-            // 載入小說資訊
-            const infoSnap = await get(ref(db, 'novel/info'));
-            if (infoSnap.exists()) {
-                const info = infoSnap.val();
-                bookTitle.textContent = info.title || '小說閱讀器';
-                totalChapters = info.totalChapters || 0;
-            }
-            
-            // 載入章節目錄
-            const chaptersSnap = await get(ref(db, 'novel/chapters'));
-            if (chaptersSnap.exists()) {
-                const data = chaptersSnap.val();
-                chapters = Object.keys(data).map(key => ({
-                    num: parseInt(key),
-                    title: data[key].title
-                })).sort((a, b) => a.num - b.num);
-                
-                totalChapters = chapters.length;
-                renderChapterList();
-            }
-            
-            // 載入閱讀進度
-            let savedParagraph = null;
-            const progressSnap = await get(ref(db, 'novel/progress'));
-            if (progressSnap.exists()) {
-                const progress = progressSnap.val();
-                currentChapterIndex = progress.chapter || chapters[0]?.num || 1;
-                savedParagraph = progress.paragraph || null;
-            } else if (chapters.length > 0) {
-                currentChapterIndex = chapters[0].num;
-            }
-            
-            // 顯示章節
-            if (chapters.length > 0) {
-                loadingScreen.style.display = 'none';
-                await showChapter(currentChapterIndex);
-                
-                // 如果有儲存的段落位置，跳轉到該位置
-                if (savedParagraph !== null) {
-                    setTimeout(() => {
-                        const targetP = chapterContent.querySelector(`p[data-index="${savedParagraph}"]`);
-                        if (targetP) {
-                            targetP.scrollIntoView({ behavior: 'auto', block: 'center' });
-                            console.log(`恢復閱讀位置: 第${currentChapterIndex}章 第${savedParagraph}段`);
-                        }
-                    }, 100);
-                }
-                
-                // 啟動自動存檔
-                startAutoSave();
-            } else {
-                loadingScreen.innerHTML = `
-                    <p>尚未上傳小說</p>
-                    <p style="margin-top: 20px;">
-                        <a href="novel-uploader.html" style="color: #4a90d9;">👉 前往上傳</a>
-                    </p>
-                `;
+        // ============ 書架登記表（含舊版資料搬移） ============
+        async function ensureShelf() {
+            const snap = await get(ref(db, 'novel/shelf'));
+            shelf = snap.exists() ? snap.val() : {};
+
+            // 第一次跑：把舊版「凡人修仙傳」登記進書架（資料仍留在 novel/，不搬章節）
+            if (!shelf.fanren) {
+                const infoSnap = await get(ref(db, 'novel/info'));
+                const title = infoSnap.exists() ? (infoSnap.val().title || '凡人修仙傳') : '凡人修仙傳';
+                const entry = { title, author: '忘語', dataPath: 'novel', order: 0, createdAt: Date.now() };
+                await set(ref(db, 'novel/shelf/fanren'), entry);
+                shelf.fanren = entry;
+
+                // 把舊的書籤/進度搬到 novel/state/fanren（只有第一次）
+                const bmSnap = await get(ref(db, 'novel/bookmark'));
+                if (bmSnap.exists() && bmSnap.val()) await set(ref(db, 'novel/state/fanren/bookmark'), bmSnap.val());
+                const pgSnap = await get(ref(db, 'novel/progress'));
+                if (pgSnap.exists()) await set(ref(db, 'novel/state/fanren/progress'), pgSnap.val());
             }
         }
+
+        // ============ 載入一本書 ============
+        async function loadBook(bookId) {
+            // 清掉上一本的監聽/存檔，避免 listener 累積
+            if (bookmarkListenerUnsub) { bookmarkListenerUnsub(); bookmarkListenerUnsub = null; }
+            stopAutoSave();
+            cancelNextChapterCountdown();
+
+            currentBookId = bookId;
+            bookDataPath = shelf[bookId]?.dataPath || `novel/books/${bookId}`;
+            await set(ref(db, 'novel/state/lastBook'), bookId);
+
+            // 重置畫面
+            chapters = [];
+            currentChapterIndex = 1;
+            chapterView.style.display = 'none';
+            chapterContent.innerHTML = '';
+            loadingScreen.style.display = 'flex';
+            loadingScreen.innerHTML = '<div class="loading-spinner"></div><p>正在載入...</p>';
+
+            // 書名
+            const infoSnap = await get(infoRef());
+            bookTitle.textContent = infoSnap.exists()
+                ? (infoSnap.val().title || shelf[bookId]?.title || '小說閱讀器')
+                : (shelf[bookId]?.title || '小說閱讀器');
+
+            // 章節目錄：優先讀輕量 toc（省流量），舊書沒有 toc 時讀一次全章並順手建好
+            const tocSnap = await get(tocRef());
+            if (tocSnap.exists()) {
+                const toc = tocSnap.val();
+                chapters = Object.keys(toc).map(key => ({
+                    num: parseInt(key),
+                    title: toc[key]
+                })).sort((a, b) => a.num - b.num);
+                totalChapters = chapters.length;
+                renderChapterList();
+            } else {
+                const chaptersSnap = await get(chaptersRef());
+                if (chaptersSnap.exists()) {
+                    const data = chaptersSnap.val();
+                    chapters = Object.keys(data).map(key => ({
+                        num: parseInt(key),
+                        title: data[key].title
+                    })).sort((a, b) => a.num - b.num);
+                    totalChapters = chapters.length;
+                    renderChapterList();
+                    // 順手建立 toc，之後開書就不必再整包下載
+                    const toc = {};
+                    Object.keys(data).forEach(k => { toc[k] = data[k].title; });
+                    set(tocRef(), toc).catch(e => console.warn('建立 toc 失敗', e));
+                }
+            }
+
+            if (chapters.length === 0) {
+                loadingScreen.innerHTML = `
+                    <p>這本書還沒有章節</p>
+                    <p style="margin-top: 20px;">
+                        <a href="novel-uploader.html" style="color: #4a90d9;">👉 前往上傳</a>
+                    </p>`;
+                return;
+            }
+
+            // 決定接續位置：書籤優先，其次進度，最後第一章
+            let resumeChapter = chapters[0].num;
+            resumeParagraph = null;
+            let hasBookmark = false;
+
+            const bmSnap = await get(bookmarkRef());
+            if (bmSnap.exists() && bmSnap.val()) {
+                resumeChapter = bmSnap.val().chapter;
+                hasBookmark = true;           // 段落交給 showChapter→loadBookmark 自動跳
+            } else {
+                const pgSnap = await get(progressRef());
+                if (pgSnap.exists()) {
+                    resumeChapter = pgSnap.val().chapter || resumeChapter;
+                    const p = pgSnap.val().paragraph;
+                    resumeParagraph = (p === undefined ? null : p);
+                }
+            }
+            if (!chapters.some(c => c.num === resumeChapter)) resumeChapter = chapters[0].num;
+
+            loadingScreen.style.display = 'none';
+            await showChapter(resumeChapter);
+
+            // 沒有書籤、但有進度段落時，跳到進度段落
+            if (!hasBookmark && resumeParagraph !== null) {
+                setTimeout(() => {
+                    const targetP = chapterContent.querySelector(`p[data-index="${resumeParagraph}"]`);
+                    if (targetP) targetP.scrollIntoView({ behavior: 'auto', block: 'center' });
+                }, 150);
+            }
+
+            startAutoSave();
+            attachBookmarkListener();
+        }
+
+        // ============ 切換書（書架） ============
+        async function switchBook(bookId) {
+            if (bookId === currentBookId) { closeBookShelf(); return; }
+            closeBookShelf();
+            // 重新抓書架（可能在上傳器新增了書）
+            const snap = await get(ref(db, 'novel/shelf'));
+            shelf = snap.exists() ? snap.val() : shelf;
+            await loadBook(bookId);
+        }
+
+        // ============ 書架 UI ============
+        const shelfOverlay = document.getElementById('shelfOverlay');
+        const shelfBooks = document.getElementById('shelfBooks');
+        const shelfClose = document.getElementById('shelfClose');
+        const menuBookShelf = document.getElementById('menuBookShelf');
+
+        async function openBookShelf() {
+            userDropdown.classList.remove('show');
+            // 重新抓書架（反映上傳器的新增）
+            const snap = await get(ref(db, 'novel/shelf'));
+            shelf = snap.exists() ? snap.val() : shelf;
+
+            const books = Object.keys(shelf)
+                .map(id => ({ id, ...shelf[id] }))
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+            shelfBooks.innerHTML = books.map(b => `
+                <div class="shelf-book ${b.id === currentBookId ? 'current' : ''}" data-id="${b.id}">
+                    <div>
+                        <div class="shelf-book-title">${b.title || b.id}</div>
+                        <div class="shelf-book-meta">${b.author || ''}</div>
+                    </div>
+                    <span class="shelf-book-badge">${b.id === currentBookId ? '閱讀中' : '切換 ›'}</span>
+                </div>
+            `).join('') || '<p style="text-align:center;opacity:.6;">書架是空的</p>';
+
+            shelfBooks.querySelectorAll('.shelf-book').forEach(el => {
+                el.addEventListener('click', () => switchBook(el.dataset.id));
+            });
+
+            shelfOverlay.classList.add('show');
+        }
+
+        function closeBookShelf() {
+            shelfOverlay.classList.remove('show');
+        }
+
+        menuBookShelf.addEventListener('click', openBookShelf);
+        shelfClose.addEventListener('click', closeBookShelf);
+        shelfOverlay.addEventListener('click', (e) => {
+            if (e.target === shelfOverlay) closeBookShelf();
+        });
 
         // ============ 開關燈 ============
         function updateThemeIcon() {
@@ -1818,7 +2034,7 @@
 
             currentChapterIndex = num;
             
-            const snap = await get(ref(db, `novel/chapters/${num}`));
+            const snap = await get(chapterRef(num));
             if (!snap.exists()) return;
             
             const chapter = snap.val();
@@ -1849,9 +2065,10 @@
             // 載入書籤
             await loadBookmark();
 
-            // 儲存進度
-            await set(ref(db, 'novel/progress'), {
+            // 儲存「目前在哪一章」（段落由自動存檔負責，不在這裡覆蓋）
+            await set(progressRef(), {
                 chapter: num,
+                paragraph: getCurrentParagraphIndex(),
                 updatedAt: Date.now()
             });
         }
@@ -1900,7 +2117,7 @@
             const paragraphIndex = getCurrentParagraphIndex();
             
             try {
-                await set(ref(db, 'novel/progress'), {
+                await set(progressRef(), {
                     chapter: currentChapterIndex,
                     paragraph: paragraphIndex,
                     updatedAt: Date.now()
@@ -2078,18 +2295,18 @@
             bookmarkBtn.classList.remove('active');
         }
         
-        // 載入書籤
+        // 載入書籤（在 showChapter 內呼叫：畫線 + 若書籤在本章則自動跳過去）
         async function loadBookmark() {
             clearBookmarkLine();
             currentBookmark = null;
-            
-            const snap = await get(ref(db, 'novel/bookmark'));
-            if (snap.exists()) {
+
+            const snap = await get(bookmarkRef());
+            if (snap.exists() && snap.val()) {
                 const bookmark = snap.val();
+                currentBookmark = bookmark;
                 if (bookmark.chapter === currentChapterIndex) {
-                    currentBookmark = bookmark;
                     showBookmarkLine(bookmark.paragraph);
-                    
+
                     // 自動跳到書籤位置
                     const p = chapterContent.querySelector(`p[data-index="${bookmark.paragraph}"]`);
                     if (p) {
@@ -2100,7 +2317,20 @@
                 }
             }
         }
-        
+
+        // 即時監聽書籤：其他裝置改書籤時，本機標記同步更新（不強制捲動，避免打斷閱讀）
+        function attachBookmarkListener() {
+            bookmarkListenerUnsub = onValue(bookmarkRef(), (snap) => {
+                const bm = (snap.exists() && snap.val()) ? snap.val() : null;
+                currentBookmark = bm;
+                if (bm && bm.chapter === currentChapterIndex) {
+                    showBookmarkLine(bm.paragraph);
+                } else {
+                    clearBookmarkLine();
+                }
+            });
+        }
+
         // 儲存書籤
         async function saveBookmark(paragraphIndex) {
             currentBookmark = {
@@ -2108,15 +2338,15 @@
                 paragraph: paragraphIndex,
                 updatedAt: Date.now()
             };
-            
-            await set(ref(db, 'novel/bookmark'), currentBookmark);
+
+            await set(bookmarkRef(), currentBookmark);
             showBookmarkLine(paragraphIndex);
         }
-        
+
         // 刪除書籤
         async function removeBookmark() {
             currentBookmark = null;
-            await set(ref(db, 'novel/bookmark'), null);
+            await set(bookmarkRef(), null);
             clearBookmarkLine();
         }
         

@@ -143,6 +143,48 @@
             background: rgba(255,255,255,0.1);
         }
         
+        /* 書籍選擇列 */
+        .book-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .book-bar-label { color: #aaa; font-size: 14px; }
+        .book-select {
+            flex: 1;
+            min-width: 180px;
+            padding: 10px 12px;
+            background: #1a1a2e;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+        .new-book-form {
+            display: none;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+            gap: 10px;
+            flex-direction: column;
+        }
+        .new-book-form.show { display: flex; }
+        .new-book-form input {
+            padding: 10px 12px;
+            background: #1a1a2e;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+        .new-book-actions { display: flex; gap: 10px; }
+
         /* 分頁標籤 */
         .tabs {
             display: flex;
@@ -425,6 +467,23 @@
         
         <!-- 主要內容 -->
         <div id="mainContent" style="display: none;">
+            <!-- 書籍選擇列 -->
+            <div class="book-bar">
+                <span class="book-bar-label">📖 目前書籍</span>
+                <select id="bookSelect" class="book-select"></select>
+                <button class="btn" id="newBookBtn">➕ 新增書</button>
+            </div>
+
+            <!-- 新增書表單（預設隱藏） -->
+            <div class="new-book-form" id="newBookForm">
+                <input type="text" id="newBookTitle" placeholder="書名（例：Buy Back Your Time 繁中版）">
+                <input type="text" id="newBookAuthor" placeholder="作者（可留空）">
+                <div class="new-book-actions">
+                    <button class="btn btn-green" id="createBookBtn">建立</button>
+                    <button class="btn btn-outline" id="cancelBookBtn">取消</button>
+                </div>
+            </div>
+
             <!-- 分頁 -->
             <div class="tabs">
                 <button class="tab active" data-tab="upload">📤 上傳章節</button>
@@ -508,6 +567,13 @@
         // 狀態
         let chaptersData = {};
         let deleteTarget = null;
+        let shelf = {};
+        let currentBookId = 'fanren';
+        let currentDataPath = 'novel';
+
+        // 依目前書解析路徑
+        const chaptersPath = () => `${currentDataPath}/chapters`;
+        const infoPath = () => `${currentDataPath}/info`;
         
         // DOM 元素
         const loginArea = document.getElementById('loginArea');
@@ -529,19 +595,93 @@
         const cancelDelete = document.getElementById('cancelDelete');
         const confirmDelete = document.getElementById('confirmDelete');
         const deleteAllBtn = document.getElementById('deleteAllBtn');
-        
+        const bookSelect = document.getElementById('bookSelect');
+        const newBookBtn = document.getElementById('newBookBtn');
+        const newBookForm = document.getElementById('newBookForm');
+        const newBookTitle = document.getElementById('newBookTitle');
+        const newBookAuthor = document.getElementById('newBookAuthor');
+        const createBookBtn = document.getElementById('createBookBtn');
+        const cancelBookBtn = document.getElementById('cancelBookBtn');
+
         let deleteAll = false;
+
+        // ============ 書架 ============
+        async function ensureShelf() {
+            const snap = await get(ref(db, 'novel/shelf'));
+            shelf = snap.exists() ? snap.val() : {};
+            if (!shelf.fanren) {
+                const infoSnap = await get(ref(db, 'novel/info'));
+                const title = infoSnap.exists() ? (infoSnap.val().title || '凡人修仙傳') : '凡人修仙傳';
+                const entry = { title, author: '忘語', dataPath: 'novel', order: 0, createdAt: Date.now() };
+                await set(ref(db, 'novel/shelf/fanren'), entry);
+                shelf.fanren = entry;
+            }
+        }
+
+        function populateBookSelect() {
+            const books = Object.keys(shelf)
+                .map(id => ({ id, ...shelf[id] }))
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+            bookSelect.innerHTML = books.map(b =>
+                `<option value="${b.id}">${b.title || b.id}</option>`
+            ).join('');
+            if (!shelf[currentBookId]) currentBookId = books[0]?.id || 'fanren';
+            bookSelect.value = currentBookId;
+            currentDataPath = shelf[currentBookId]?.dataPath || 'novel';
+        }
+
+        bookSelect.addEventListener('change', () => {
+            currentBookId = bookSelect.value;
+            currentDataPath = shelf[currentBookId]?.dataPath || `novel/books/${currentBookId}`;
+            loadChapters();
+        });
+
+        // 新增書
+        newBookBtn.addEventListener('click', () => {
+            newBookForm.classList.toggle('show');
+            newBookTitle.focus();
+        });
+        cancelBookBtn.addEventListener('click', () => {
+            newBookForm.classList.remove('show');
+            newBookTitle.value = '';
+            newBookAuthor.value = '';
+        });
+        createBookBtn.addEventListener('click', async () => {
+            const title = newBookTitle.value.trim();
+            if (!title) { alert('請輸入書名'); return; }
+            const id = 'book_' + Date.now();
+            const maxOrder = Math.max(0, ...Object.values(shelf).map(b => b.order || 0));
+            const entry = {
+                title,
+                author: newBookAuthor.value.trim() || '',
+                dataPath: `novel/books/${id}`,
+                order: maxOrder + 1,
+                createdAt: Date.now()
+            };
+            await set(ref(db, `novel/shelf/${id}`), entry);
+            shelf[id] = entry;
+            currentBookId = id;
+            currentDataPath = entry.dataPath;
+            newBookForm.classList.remove('show');
+            newBookTitle.value = '';
+            newBookAuthor.value = '';
+            populateBookSelect();
+            await loadChapters();
+            alert(`已建立「${title}」，現在可以上傳這本書的章節`);
+        });
         
         // ============ 登入狀態 ============
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 loginArea.style.display = 'none';
                 userBar.classList.add('show');
                 mainContent.style.display = 'block';
-                
+
                 userPhoto.src = user.photoURL || '';
                 userName.textContent = user.displayName || user.email;
-                
+
+                await ensureShelf();
+                populateBookSelect();
                 loadChapters();
             } else {
                 loginArea.style.display = 'block';
@@ -581,14 +721,28 @@
         // ============ 載入章節 ============
         async function loadChapters() {
             try {
-                const snapshot = await get(ref(db, 'novel/chapters'));
+                // 優先讀輕量 toc（省流量）
+                const tocSnap = await get(ref(db, `${currentDataPath}/toc`));
+                if (tocSnap.exists()) {
+                    const toc = tocSnap.val();
+                    chaptersData = {};
+                    Object.keys(toc).forEach(k => { chaptersData[k] = { title: toc[k] }; });
+                    displayChapters();
+                    return;
+                }
+                // 舊書沒有 toc：讀一次全章，順手建好
+                const snapshot = await get(ref(db, chaptersPath()));
                 if (snapshot.exists()) {
                     chaptersData = snapshot.val();
+                    const toc = {};
+                    Object.keys(chaptersData).forEach(k => { toc[k] = chaptersData[k].title; });
+                    set(ref(db, `${currentDataPath}/toc`), toc).catch(() => {});
                     displayChapters();
                 } else {
                     chaptersData = {};
                     chapterList.innerHTML = '<div class="empty-state">尚未上傳任何章節</div>';
                     chapterStats.textContent = '共 0 章';
+                    deleteAllBtn.style.display = 'none';
                 }
             } catch (error) {
                 console.error('載入失敗:', error);
@@ -644,13 +798,15 @@
         confirmDelete.addEventListener('click', async () => {
             try {
                 if (deleteAll) {
-                    // 刪除全部
-                    await remove(ref(db, 'novel/chapters'));
-                    await remove(ref(db, 'novel/progress'));
+                    // 刪除全部（含這本書的目錄/進度/書籤）
+                    await remove(ref(db, chaptersPath()));
+                    await remove(ref(db, `${currentDataPath}/toc`));
+                    await remove(ref(db, `novel/state/${currentBookId}`));
                     deleteAll = false;
                 } else if (deleteTarget) {
-                    // 刪除單一章節
-                    await remove(ref(db, `novel/chapters/${deleteTarget}`));
+                    // 刪除單一章節 + 目錄項
+                    await remove(ref(db, `${chaptersPath()}/${deleteTarget}`));
+                    await remove(ref(db, `${currentDataPath}/toc/${deleteTarget}`));
                 }
                 
                 deleteModal.classList.remove('show');
@@ -720,12 +876,14 @@
                         continue;
                     }
                     
-                    // 上傳到 Firebase
-                    await set(ref(db, `novel/chapters/${chapterNum}`), {
+                    // 上傳到 Firebase（目前選定的書）
+                    await set(ref(db, `${chaptersPath()}/${chapterNum}`), {
                         title: title,
                         content: text,
                         uploadedAt: Date.now()
                     });
+                    // 同步輕量目錄 toc（閱讀器列目錄只讀這個，省流量）
+                    await set(ref(db, `${currentDataPath}/toc/${chapterNum}`), title);
                     
                     uploaded++;
                     
@@ -757,14 +915,18 @@
         }
         
         async function updateNovelInfo() {
-            const snapshot = await get(ref(db, 'novel/chapters'));
+            const snapshot = await get(ref(db, chaptersPath()));
             const total = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
-            
-            await set(ref(db, 'novel/info'), {
-                title: '凡人修仙傳',
+            const title = shelf[currentBookId]?.title || '未命名';
+
+            await set(ref(db, infoPath()), {
+                title,
                 totalChapters: total,
                 updatedAt: Date.now()
             });
+            // 同步更新書架的總章數
+            await update(ref(db, `novel/shelf/${currentBookId}`), { totalChapters: total });
+            shelf[currentBookId].totalChapters = total;
         }
         
         function readFile(file) {
