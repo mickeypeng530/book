@@ -941,22 +941,28 @@
             });
         }
         
+        function filePrefixNum(filename) {
+            // 檔名數字前綴當章節號:02_xxx.txt → 2、16-結論.txt → 16
+            const m = filename.match(/^(\d+)\s*[_\-]/);
+            return m ? parseInt(m[1]) : null;
+        }
+
         function parseChapter(content, filename) {
             const lines = content.split('\n');
             let title = lines[0]?.trim() || '';
-            
-            // 提取章節號
-            const chapterNum = extractChapterNumber(title) || extractChapterNumber(filename);
-            
-            // 找正文
-            let contentStart = 0;
+
+            // 章節號:優先用檔名數字前綴,否則從標題/檔名的「第X章」抽
+            const chapterNum = filePrefixNum(filename) || extractChapterNumber(title) || extractChapterNumber(filename);
+
+            // 找正文起點:有 '=' 分隔線就跳到其後;否則跳過標題那一行
+            let contentStart = 1;
             for (let i = 0; i < Math.min(5, lines.length); i++) {
                 if (lines[i].startsWith('=')) {
                     contentStart = i + 1;
                     break;
                 }
             }
-            
+
             const text = lines.slice(contentStart).join('\n').trim();
             
             return { chapterNum, title, text };
