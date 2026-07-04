@@ -942,8 +942,8 @@
         }
         
         function filePrefixNum(filename) {
-            // 檔名數字前綴當章節號:02_xxx.txt → 2、16-結論.txt → 16
-            const m = filename.match(/^(\d+)\s*[_\-]/);
+            // 檔名數字前綴當章節號:02_xxx.txt→2、16-結論.txt→16、2600 標題.txt→2600、2601.txt→2601
+            const m = filename.match(/^(\d+)(?:[ _.\-]|$)/);
             return m ? parseInt(m[1]) : null;
         }
 
