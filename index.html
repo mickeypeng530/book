@@ -1095,6 +1095,7 @@
                     <div class="user-dropdown-item mobile-only" id="menuThemeToggle">🌙 開關燈</div>
                     <div class="user-dropdown-divider mobile-only"></div>
                     <div class="user-dropdown-item" id="menuBookShelf">📚 書架（切換書）</div>
+                    <div class="user-dropdown-item" id="menuPrefetch">⬇️ 離線預載</div>
                     <a class="user-dropdown-item" href="novel-uploader.html">📤 上傳章節</a>
                     <div class="user-dropdown-item" id="logoutBtn">🚪 登出</div>
                 </div>
@@ -1402,6 +1403,48 @@
         const scrollIndicator = document.getElementById('scrollIndicator');
         const bookmarkBtn = document.getElementById('bookmarkBtn');
         
+        // HTML 轉義：所有從 DB 讀出、要進 innerHTML 的字串都必須先過這層（防 stored XSS / 版面破壞）
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+            ));
+        }
+
+        // ============ 離線快取（localStorage） ============
+        // 注意：RTDB 的 set() 離線時會排隊、promise 到回線才 resolve —— 開機/UI 流程一律
+        // fire-and-forget（set(...).catch(...)），絕對不要 await，否則離線會整個卡死。
+        const chapCacheKey     = (num) => `novel-cache:${currentBookId}:${num}`;
+        const chapIdxKey       = () => `novel-cache-idx:${currentBookId}`;
+        const tocCacheKey      = () => `novel-toc:${currentBookId}`;
+        const progressCacheKey = () => `novel-progress:${currentBookId}`;
+        const bookmarkCacheKey = () => `novel-bookmark:${currentBookId}`;
+        const CACHE_MAX_CHAPTERS = 80;   // 每本書最多快取章數（LRU 淘汰）
+
+        function lsGetJson(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+        function lsSetJson(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+
+        function cacheGetChapter(num) { return lsGetJson(chapCacheKey(num)); }
+        function cachePutChapter(num, chapter) {
+            const data = { title: chapter.title, content: chapter.content };
+            let idx = (lsGetJson(chapIdxKey()) || []).filter(n => n !== num);
+            while (idx.length >= CACHE_MAX_CHAPTERS) localStorage.removeItem(chapCacheKey(idx.shift()));
+            let ok = lsSetJson(chapCacheKey(num), data);
+            while (!ok && idx.length) {   // localStorage 配額滿：邊淘汰最舊的邊重試
+                localStorage.removeItem(chapCacheKey(idx.shift()));
+                ok = lsSetJson(chapCacheKey(num), data);
+            }
+            if (ok) idx.push(num);
+            lsSetJson(chapIdxKey(), idx);
+        }
+
+        // get() 加 timeout：離線/機上 wifi 假連線時不讓流程卡死。失敗回 null（呼叫端走快取）
+        function tryGet(r, ms = 8000) {
+            return Promise.race([
+                get(r),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+            ]).catch(() => null);
+        }
+
         // TTS DOM 元素
         const quickTtsBtn = document.getElementById('quickTtsBtn');
         const ttsBtn = document.getElementById('ttsBtn');
@@ -1424,11 +1467,17 @@
 
                 // 載入閱讀設定（字體/主題/捲動等，一次性）
                 loadSettings();
-                // 確保書架登記表存在（含舊版凡人資料搬移）
+                // 確保書架登記表存在（含舊版凡人資料搬移；離線時退回快取書架）
                 await ensureShelf();
-                // 接續上次讀的那本書
-                const lastSnap = await get(ref(db, 'novel/state/lastBook'));
-                const lastBook = (lastSnap.exists() && shelf[lastSnap.val()]) ? lastSnap.val() : 'fanren';
+                // 接續上次讀的那本書（離線時信任本機記錄）
+                const lastSnap = await tryGet(ref(db, 'novel/state/lastBook'));
+                const cachedLast = localStorage.getItem('novel-lastBook');
+                let lastBook = 'fanren';
+                if (lastSnap && lastSnap.exists() && shelf[lastSnap.val()]) {
+                    lastBook = lastSnap.val();
+                } else if (cachedLast && (shelf[cachedLast] || lastSnap === null)) {
+                    lastBook = cachedLast;
+                }
                 await loadBook(lastBook);
             } else {
                 currentUser = null;
@@ -1514,8 +1563,14 @@
 
         // ============ 書架登記表（含舊版資料搬移） ============
         async function ensureShelf() {
-            const snap = await get(ref(db, 'novel/shelf'));
+            const snap = await tryGet(ref(db, 'novel/shelf'));
+            if (snap === null) {
+                // 離線：用快取書架（第一次上線跑過就會有）
+                shelf = lsGetJson('novel-shelf-cache') || {};
+                return;
+            }
             shelf = snap.exists() ? snap.val() : {};
+            lsSetJson('novel-shelf-cache', shelf);
 
             // 第一次跑：把舊版「凡人修仙傳」登記進書架（資料仍留在 novel/，不搬章節）
             if (!shelf.fanren) {
@@ -1541,8 +1596,10 @@
             cancelNextChapterCountdown();
 
             currentBookId = bookId;
-            bookDataPath = shelf[bookId]?.dataPath || `novel/books/${bookId}`;
-            await set(ref(db, 'novel/state/lastBook'), bookId);
+            // 離線且無快取書架時，fanren 的資料在舊路徑 novel/，不能落到 novel/books/fanren
+            bookDataPath = shelf[bookId]?.dataPath || (bookId === 'fanren' ? 'novel' : `novel/books/${bookId}`);
+            localStorage.setItem('novel-lastBook', bookId);
+            set(ref(db, 'novel/state/lastBook'), bookId).catch(() => {});
 
             // 重置畫面
             chapters = [];
@@ -1552,41 +1609,43 @@
             loadingScreen.style.display = 'flex';
             loadingScreen.innerHTML = '<div class="loading-spinner"></div><p>正在載入...</p>';
 
-            // 書名
-            const infoSnap = await get(infoRef());
-            bookTitle.textContent = infoSnap.exists()
+            // 書名（離線退書架快取）
+            const infoSnap = await tryGet(infoRef());
+            bookTitle.textContent = (infoSnap && infoSnap.exists())
                 ? (infoSnap.val().title || shelf[bookId]?.title || '小說閱讀器')
                 : (shelf[bookId]?.title || '小說閱讀器');
 
-            // 章節目錄：優先讀輕量 toc（省流量），舊書沒有 toc 時讀一次全章並順手建好
-            const tocSnap = await get(tocRef());
-            if (tocSnap.exists()) {
+            // 章節目錄：優先讀輕量 toc（省流量），舊書沒有 toc 時讀一次全章並順手建好；離線退快取目錄
+            let offline = false;
+            const tocSnap = await tryGet(tocRef());
+            if (tocSnap && tocSnap.exists()) {
                 const toc = tocSnap.val();
                 chapters = Object.keys(toc).map(key => ({
                     num: parseInt(key),
                     title: toc[key]
                 })).sort((a, b) => a.num - b.num);
-                totalChapters = chapters.length;
-                renderChapterList();
-            } else {
-                const chaptersSnap = await get(chaptersRef());
-                if (chaptersSnap.exists()) {
+            } else if (tocSnap) {
+                const chaptersSnap = await tryGet(chaptersRef());
+                if (chaptersSnap && chaptersSnap.exists()) {
                     const data = chaptersSnap.val();
                     chapters = Object.keys(data).map(key => ({
                         num: parseInt(key),
                         title: data[key].title
                     })).sort((a, b) => a.num - b.num);
-                    totalChapters = chapters.length;
-                    renderChapterList();
                     // 順手建立 toc，之後開書就不必再整包下載
                     const toc = {};
                     Object.keys(data).forEach(k => { toc[k] = data[k].title; });
                     set(tocRef(), toc).catch(e => console.warn('建立 toc 失敗', e));
                 }
+            } else {
+                offline = true;
+                chapters = lsGetJson(tocCacheKey()) || [];
             }
 
             if (chapters.length === 0) {
-                loadingScreen.innerHTML = `
+                loadingScreen.innerHTML = offline
+                    ? '<p>📡 離線中，這本書沒有快取目錄</p><p style="margin-top:10px;opacity:.7;">回到有網路時開一次書即可</p>'
+                    : `
                     <p>這本書還沒有章節</p>
                     <p style="margin-top: 20px;">
                         <a href="novel-uploader.html" style="color: #4a90d9;">👉 前往上傳</a>
@@ -1594,30 +1653,43 @@
                 return;
             }
 
-            // 決定接續位置：書籤優先，其次進度，最後第一章
+            totalChapters = chapters.length;
+            renderChapterList();
+            lsSetJson(tocCacheKey(), chapters);   // 目錄留一份本機（離線開書要靠它）
+
+            // 決定接續位置：書籤 vs 進度，比 updatedAt 取較新者（都沒有 → 第一章）
             let resumeChapter = chapters[0].num;
             resumeParagraph = null;
-            let hasBookmark = false;
+            let useBookmark = false;
 
-            const bmSnap = await get(bookmarkRef());
-            if (bmSnap.exists() && bmSnap.val()) {
-                resumeChapter = bmSnap.val().chapter;
-                hasBookmark = true;           // 段落交給 showChapter→loadBookmark 自動跳
-            } else {
-                const pgSnap = await get(progressRef());
-                if (pgSnap.exists()) {
-                    resumeChapter = pgSnap.val().chapter || resumeChapter;
-                    const p = pgSnap.val().paragraph;
-                    resumeParagraph = (p === undefined ? null : p);
-                }
+            const [bmSnap, pgSnap] = await Promise.all([tryGet(bookmarkRef()), tryGet(progressRef())]);
+            let bm = (bmSnap && bmSnap.exists() && bmSnap.val()) ? bmSnap.val() : null;
+            let pg = (pgSnap && pgSnap.exists()) ? pgSnap.val() : null;
+            if (!bm && bmSnap === null) bm = lsGetJson(bookmarkCacheKey());   // 離線退書籤鏡像
+            // 本機進度鏡像可能比遠端新（上次離線讀的）→ 用它並回寫遠端
+            const localPg = lsGetJson(progressCacheKey());
+            if (localPg && (!pg || (localPg.updatedAt || 0) > (pg.updatedAt || 0))) {
+                pg = localPg;
+                set(progressRef(), localPg).catch(() => {});
+            }
+            if (bm && (!pg || (bm.updatedAt || 0) >= (pg.updatedAt || 0))) {
+                resumeChapter = bm.chapter;
+                useBookmark = true;           // 段落交給 showChapter→loadBookmark 自動跳
+            } else if (pg) {
+                resumeChapter = pg.chapter || resumeChapter;
+                const p = pg.paragraph;
+                resumeParagraph = (p === undefined ? null : p);
             }
             if (!chapters.some(c => c.num === resumeChapter)) resumeChapter = chapters[0].num;
 
             loadingScreen.style.display = 'none';
-            await showChapter(resumeChapter);
+            lastSavedPos = null;
+            // resume 開書不寫 progress（避免洗掉其他裝置的較新位置）；
+            // 以進度接續時不自動跳書籤，避免兩個捲動互搶
+            await showChapter(resumeChapter, { isResume: true, skipBookmarkJump: !useBookmark });
 
-            // 沒有書籤、但有進度段落時，跳到進度段落
-            if (!hasBookmark && resumeParagraph !== null) {
+            // 以進度接續時，跳到進度段落
+            if (!useBookmark && resumeParagraph !== null) {
                 setTimeout(() => {
                     const targetP = chapterContent.querySelector(`p[data-index="${resumeParagraph}"]`);
                     if (targetP) targetP.scrollIntoView({ behavior: 'auto', block: 'center' });
@@ -1632,9 +1704,9 @@
         async function switchBook(bookId) {
             if (bookId === currentBookId) { closeBookShelf(); return; }
             closeBookShelf();
-            // 重新抓書架（可能在上傳器新增了書）
-            const snap = await get(ref(db, 'novel/shelf'));
-            shelf = snap.exists() ? snap.val() : shelf;
+            // 重新抓書架（可能在上傳器新增了書；離線就沿用手上的）
+            const snap = await tryGet(ref(db, 'novel/shelf'));
+            if (snap && snap.exists()) { shelf = snap.val(); lsSetJson('novel-shelf-cache', shelf); }
             await loadBook(bookId);
         }
 
@@ -1646,9 +1718,9 @@
 
         async function openBookShelf() {
             userDropdown.classList.remove('show');
-            // 重新抓書架（反映上傳器的新增）
-            const snap = await get(ref(db, 'novel/shelf'));
-            shelf = snap.exists() ? snap.val() : shelf;
+            // 重新抓書架（反映上傳器的新增；離線就沿用手上的）
+            const snap = await tryGet(ref(db, 'novel/shelf'));
+            if (snap && snap.exists()) { shelf = snap.val(); lsSetJson('novel-shelf-cache', shelf); }
 
             const books = Object.keys(shelf)
                 .map(id => ({ id, ...shelf[id] }))
@@ -1657,8 +1729,8 @@
             shelfBooks.innerHTML = books.map(b => `
                 <div class="shelf-book ${b.id === currentBookId ? 'current' : ''}" data-id="${b.id}">
                     <div>
-                        <div class="shelf-book-title">${b.title || b.id}</div>
-                        <div class="shelf-book-meta">${b.author || ''}</div>
+                        <div class="shelf-book-title">${escapeHtml(b.title || b.id)}</div>
+                        <div class="shelf-book-meta">${escapeHtml(b.author || '')}</div>
                     </div>
                     <span class="shelf-book-badge">${b.id === currentBookId ? '閱讀中' : '切換 ›'}</span>
                 </div>
@@ -1677,6 +1749,42 @@
 
         menuBookShelf.addEventListener('click', openBookShelf);
         shelfClose.addEventListener('click', closeBookShelf);
+
+        // ============ 離線預載（目前章節 -2 ~ +30，存 localStorage） ============
+        const menuPrefetch = document.getElementById('menuPrefetch');
+        let prefetching = false;
+
+        async function prefetchChapters() {
+            if (prefetching || chapters.length === 0) return;
+            prefetching = true;
+
+            const i = Math.max(0, chapters.findIndex(ch => ch.num === currentChapterIndex));
+            const targets = chapters.slice(Math.max(0, i - 2), i + 31).map(ch => ch.num);
+
+            // 離線開書需要的周邊資料也留一份
+            lsSetJson(tocCacheKey(), chapters);
+            lsSetJson('novel-shelf-cache', shelf);
+            localStorage.setItem('novel-lastBook', currentBookId);
+
+            let done = 0, failed = 0;
+            for (const num of targets) {
+                if (!cacheGetChapter(num)) {
+                    const snap = await tryGet(chapterRef(num));
+                    if (snap && snap.exists()) cachePutChapter(num, snap.val());
+                    else { failed++; continue; }
+                }
+                done++;
+                menuPrefetch.textContent = `⬇️ 預載中 ${done}/${targets.length}`;
+            }
+
+            menuPrefetch.textContent = failed > 0
+                ? `⚠️ 預載完成 ${done} 章，${failed} 章失敗`
+                : `✅ 已預載 ${done} 章，可離線閱讀`;
+            setTimeout(() => { menuPrefetch.textContent = '⬇️ 離線預載'; }, 5000);
+            prefetching = false;
+        }
+
+        menuPrefetch.addEventListener('click', prefetchChapters);
         shelfOverlay.addEventListener('click', (e) => {
             if (e.target === shelfOverlay) closeBookShelf();
         });
@@ -2024,8 +2132,8 @@
 
         // ============ 章節目錄 ============
         function renderChapterList() {
-            chapterList.innerHTML = chapters.map(ch => 
-                `<li data-num="${ch.num}" class="${ch.num === currentChapterIndex ? 'active' : ''}">${ch.title}</li>`
+            chapterList.innerHTML = chapters.map(ch =>
+                `<li data-num="${ch.num}" class="${ch.num === currentChapterIndex ? 'active' : ''}">${escapeHtml(ch.title)}</li>`
             ).join('');
 
             chapterList.querySelectorAll('li').forEach(li => {
@@ -2037,27 +2145,40 @@
         }
 
         // ============ 顯示章節 ============
-        async function showChapter(num) {
+        async function showChapter(num, opts = {}) {
             // 檢查章節是否存在
             const chapterExists = chapters.some(ch => ch.num === num);
             if (!chapterExists) return;
 
             currentChapterIndex = num;
-            
-            const snap = await get(chapterRef(num));
-            if (!snap.exists()) return;
-            
-            const chapter = snap.val();
-            
+
+            // 線上：讀網路並順手存快取；離線/失敗：退 localStorage 快取
+            const snap = await tryGet(chapterRef(num));
+            let chapter = (snap && snap.exists()) ? snap.val() : null;
+            if (chapter) cachePutChapter(num, chapter);
+            else chapter = cacheGetChapter(num);
+
+            if (!chapter) {
+                const meta = chapters.find(ch => ch.num === num);
+                chapterTitle.textContent = meta ? meta.title : `第 ${num} 章`;
+                chapterContent.innerHTML = '<p data-index="0">📡 離線中，這一章還沒預載。回到有網路時再開，或事先用選單「⬇️ 離線預載」。</p>';
+                chapterView.style.display = 'block';
+                chapterList.querySelectorAll('li').forEach(li => {
+                    li.classList.toggle('active', parseInt(li.dataset.num) === num);
+                });
+                updateProgress();
+                return;   // 不寫 progress、不動書籤
+            }
+
             chapterTitle.textContent = chapter.title;
             
             const paragraphs = chapter.content
                 .split(/\n\s*\n/)
                 .filter(p => p.trim())
-                .map((p, i) => `<p data-index="${i}">${p.trim()}</p>`)
+                .map((p, i) => `<p data-index="${i}">${escapeHtml(p.trim())}</p>`)
                 .join('');
-            
-            chapterContent.innerHTML = paragraphs || `<p data-index="0">${chapter.content}</p>`;
+
+            chapterContent.innerHTML = paragraphs || `<p data-index="0">${escapeHtml(chapter.content)}</p>`;
             chapterContent.style.fontSize = fontSize + 'px';
             chapterContent.style.fontWeight = fontWeight;
             
@@ -2072,15 +2193,17 @@
 
             window.scrollTo(0, 0);
             
-            // 載入書籤
-            await loadBookmark();
+            // 載入書籤（以進度 resume 時不自動跳書籤，避免捲動互搶）
+            await loadBookmark(!opts.skipBookmarkJump);
 
-            // 儲存「目前在哪一章」（段落由自動存檔負責，不在這裡覆蓋）
-            await set(progressRef(), {
-                chapter: num,
-                paragraph: getCurrentParagraphIndex(),
-                updatedAt: Date.now()
-            });
+            // 手動翻章 → 記「本章開頭」；resume 開書不寫（其他裝置可能有較新位置）
+            // fire-and-forget：離線時 set() 會排隊等回線，await 會卡住
+            if (!opts.isResume) {
+                lastSavedPos = { chapter: num, paragraph: 0 };
+                const pos = { chapter: num, paragraph: 0, updatedAt: Date.now() };
+                lsSetJson(progressCacheKey(), pos);
+                set(progressRef(), pos).catch(() => {});
+            }
         }
         
         // 更新閱讀進度百分比
@@ -2091,9 +2214,11 @@
             chapterProgress.textContent = `${currentChapterIndex} 章 (${percent}%)`;
         }
 
-        // ============ 自動記錄閱讀位置（每3分鐘） ============
+        // ============ 自動記錄閱讀位置（捲動停止 3 秒 debounce + 離開頁面強制存） ============
         let autoSaveInterval = null;
-        
+        let saveDebounceTimer = null;
+        let lastSavedPos = null;   // 上次寫入的 {chapter, paragraph}；相同就不重寫（省流量、防閒置覆寫）
+
         function getCurrentParagraphIndex() {
             // 找出目前畫面中央的段落
             const paragraphs = chapterContent.querySelectorAll('p[data-index]');
@@ -2121,45 +2246,52 @@
             return closestIndex;
         }
         
-        async function saveReadingPosition() {
+        async function saveReadingPosition(force = false) {
             if (!currentUser || chapters.length === 0) return;
-            
+            // 背景分頁不寫（閒置裝置不能蓋掉正在閱讀那台的進度）；離開頁面那次用 force
+            if (!force && document.visibilityState === 'hidden') return;
+
             const paragraphIndex = getCurrentParagraphIndex();
-            
-            try {
-                await set(progressRef(), {
-                    chapter: currentChapterIndex,
-                    paragraph: paragraphIndex,
-                    updatedAt: Date.now()
-                });
-                console.log(`自動存檔: 第${currentChapterIndex}章 第${paragraphIndex}段`);
-            } catch (err) {
-                console.error('自動存檔失敗:', err);
-            }
+            // 位置沒變就不寫（省流量，也避免閒置分頁一直刷新 updatedAt）
+            if (!force && lastSavedPos &&
+                lastSavedPos.chapter === currentChapterIndex &&
+                lastSavedPos.paragraph === paragraphIndex) return;
+
+            // 本機鏡像先落地（離線也不丟），遠端 fire-and-forget（離線時 SDK 排隊、回線自動補送）
+            const pos = { chapter: currentChapterIndex, paragraph: paragraphIndex, updatedAt: Date.now() };
+            lsSetJson(progressCacheKey(), pos);
+            set(progressRef(), pos).catch(() => {});
+            lastSavedPos = { chapter: currentChapterIndex, paragraph: paragraphIndex };
+            console.log(`自動存檔: 第${currentChapterIndex}章 第${paragraphIndex}段`);
         }
-        
+
         function startAutoSave() {
             if (autoSaveInterval) return;
-            // 每 3 分鐘存一次
-            autoSaveInterval = setInterval(saveReadingPosition, 3 * 60 * 1000);
+            // 保險網：每 3 分鐘檢查一次（主要存檔靠捲動 debounce；有 hidden/沒變 guard，閒置分頁不會寫）
+            autoSaveInterval = setInterval(() => saveReadingPosition(), 3 * 60 * 1000);
         }
-        
+
         function stopAutoSave() {
             if (autoSaveInterval) {
                 clearInterval(autoSaveInterval);
                 autoSaveInterval = null;
             }
+            clearTimeout(saveDebounceTimer);
         }
-        
-        // 頁面關閉/隱藏時也存一次
+
+        // 頁面關閉/隱藏時強制存一次（iOS 不觸發 beforeunload，靠 visibilitychange/pagehide）
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
-                saveReadingPosition();
+                saveReadingPosition(true);
             }
         });
-        
+
+        window.addEventListener('pagehide', () => {
+            saveReadingPosition(true);
+        });
+
         window.addEventListener('beforeunload', () => {
-            saveReadingPosition();
+            saveReadingPosition(true);
         });
 
         // ============ 上下章 ============
@@ -2246,6 +2378,9 @@
                 requestAnimationFrame(handleScroll);
                 ticking = true;
             }
+            // 捲動停止 3 秒後存一次進度（跨裝置同步的主要寫入點）
+            clearTimeout(saveDebounceTimer);
+            saveDebounceTimer = setTimeout(() => saveReadingPosition(), 3000);
         });
 
         // 點擊畫面中間也可以顯示/隱藏工具列（只在手機版）
@@ -2306,23 +2441,28 @@
         }
         
         // 載入書籤（在 showChapter 內呼叫：畫線 + 若書籤在本章則自動跳過去）
-        async function loadBookmark() {
+        async function loadBookmark(autoJump = true) {
             clearBookmarkLine();
             currentBookmark = null;
 
-            const snap = await get(bookmarkRef());
-            if (snap.exists() && snap.val()) {
-                const bookmark = snap.val();
+            const snap = await tryGet(bookmarkRef());
+            let bookmark = (snap && snap.exists() && snap.val()) ? snap.val() : null;
+            if (snap === null) bookmark = lsGetJson(bookmarkCacheKey());   // 離線退鏡像
+            else if (bookmark) lsSetJson(bookmarkCacheKey(), bookmark);
+            else localStorage.removeItem(bookmarkCacheKey());
+            if (bookmark) {
                 currentBookmark = bookmark;
                 if (bookmark.chapter === currentChapterIndex) {
                     showBookmarkLine(bookmark.paragraph);
 
-                    // 自動跳到書籤位置
-                    const p = chapterContent.querySelector(`p[data-index="${bookmark.paragraph}"]`);
-                    if (p) {
-                        setTimeout(() => {
-                            p.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 300);
+                    // 自動跳到書籤位置（以進度 resume 時關閉，避免搶捲動）
+                    if (autoJump) {
+                        const p = chapterContent.querySelector(`p[data-index="${bookmark.paragraph}"]`);
+                        if (p) {
+                            setTimeout(() => {
+                                p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }, 300);
+                        }
                     }
                 }
             }
@@ -2333,6 +2473,8 @@
             bookmarkListenerUnsub = onValue(bookmarkRef(), (snap) => {
                 const bm = (snap.exists() && snap.val()) ? snap.val() : null;
                 currentBookmark = bm;
+                if (bm) lsSetJson(bookmarkCacheKey(), bm);
+                else localStorage.removeItem(bookmarkCacheKey());
                 if (bm && bm.chapter === currentChapterIndex) {
                     showBookmarkLine(bm.paragraph);
                 } else {
@@ -2349,14 +2491,16 @@
                 updatedAt: Date.now()
             };
 
-            await set(bookmarkRef(), currentBookmark);
+            lsSetJson(bookmarkCacheKey(), currentBookmark);
+            set(bookmarkRef(), currentBookmark).catch(() => {});   // 離線排隊，回線補送
             showBookmarkLine(paragraphIndex);
         }
 
         // 刪除書籤
         async function removeBookmark() {
             currentBookmark = null;
-            await set(bookmarkRef(), null);
+            localStorage.removeItem(bookmarkCacheKey());
+            set(bookmarkRef(), null).catch(() => {});
             clearBookmarkLine();
         }
         
@@ -2590,11 +2734,11 @@
         
         // 切換章節時停止 TTS
         const originalShowChapter = showChapter;
-        showChapter = async function(num) {
+        showChapter = async function(num, opts) {
             if (ttsSpeaking) {
                 stopTts();
             }
-            return originalShowChapter(num);
+            return originalShowChapter(num, opts);
         };
 
         // ============ 背景音樂功能 ============
@@ -2856,6 +3000,11 @@
             }
         }
         loadMusicSettings();
+
+        // ============ Service worker（離線外殼：飛機上 app 才打得開） ============
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        }
     </script>
 </body>
 </html>

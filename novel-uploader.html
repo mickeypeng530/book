@@ -608,6 +608,13 @@
 
         let deleteAll = false;
 
+        // HTML 轉義：DB 讀出要進 innerHTML 的字串一律先過這層
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+            ));
+        }
+
         // ============ 書架 ============
         async function ensureShelf() {
             const snap = await get(ref(db, 'novel/shelf'));
@@ -626,7 +633,7 @@
                 .map(id => ({ id, ...shelf[id] }))
                 .sort((a, b) => (a.order || 0) - (b.order || 0));
             bookSelect.innerHTML = books.map(b =>
-                `<option value="${b.id}">${b.title || b.id}</option>`
+                `<option value="${b.id}">${escapeHtml(b.title || b.id)}</option>`
             ).join('');
             if (!shelf[currentBookId]) currentBookId = books[0]?.id || 'fanren';
             bookSelect.value = currentBookId;
@@ -776,8 +783,8 @@
             chapterList.innerHTML = chapters.map(ch => `
                 <div class="chapter-item">
                     <span class="chapter-num">#${ch.num}</span>
-                    <span class="chapter-title">${ch.title}</span>
-                    <button class="delete-btn" data-num="${ch.num}" data-title="${ch.title}">刪除</button>
+                    <span class="chapter-title">${escapeHtml(ch.title)}</span>
+                    <button class="delete-btn" data-num="${ch.num}" data-title="${escapeHtml(ch.title)}">刪除</button>
                 </div>
             `).join('');
             
@@ -943,6 +950,7 @@
         
         function filePrefixNum(filename) {
             // 檔名數字前綴當章節號:02_xxx.txt→2、16-結論.txt→16、2600 標題.txt→2600、2601.txt→2601
+            // 分隔符接受 底線/減號/空白/點(副檔名),都沒有也吃(純數字檔名)
             const m = filename.match(/^(\d+)(?:[ _.\-]|$)/);
             return m ? parseInt(m[1]) : null;
         }
