@@ -298,6 +298,21 @@
             text-indent: 2em;
         }
 
+        /* 漫畫（條漫）模式 */
+        .chapter-content.manga-mode {
+            max-width: 100%;
+            text-align: center;
+            font-size: 0;            /* 消除 img 間的行內空隙 */
+        }
+        .chapter-content.manga-mode .manga-page {
+            display: block;
+            width: 100%;
+            max-width: 760px;        /* 桌機置中不過寬,手機滿版 */
+            margin: 0 auto;
+            background: #111;          /* 圖未載入時的底色 */
+            min-height: 40px;
+        }
+
         /* 底部導航 */
         .footer-nav {
             position: fixed;
@@ -1691,7 +1706,7 @@
             // 以進度接續時，跳到進度段落
             if (!useBookmark && resumeParagraph !== null) {
                 setTimeout(() => {
-                    const targetP = chapterContent.querySelector(`p[data-index="${resumeParagraph}"]`);
+                    const targetP = chapterContent.querySelector(`[data-index="${resumeParagraph}"]`);
                     if (targetP) targetP.scrollIntoView({ behavior: 'auto', block: 'center' });
                 }, 150);
             }
@@ -2152,16 +2167,18 @@
 
             currentChapterIndex = num;
 
-            // 線上：讀網路並順手存快取；離線/失敗：退 localStorage 快取
+            // 線上：讀網路。漫畫不快取（先不做離線）；小說順手存 localStorage 快取，離線退快取
             const snap = await tryGet(chapterRef(num));
             let chapter = (snap && snap.exists()) ? snap.val() : null;
-            if (chapter) cachePutChapter(num, chapter);
-            else chapter = cacheGetChapter(num);
+            const isManga = chapter && Array.isArray(chapter.images);
+            if (chapter && !isManga) cachePutChapter(num, chapter);
+            else if (!chapter) chapter = cacheGetChapter(num);
 
             if (!chapter) {
                 const meta = chapters.find(ch => ch.num === num);
                 chapterTitle.textContent = meta ? meta.title : `第 ${num} 章`;
-                chapterContent.innerHTML = '<p data-index="0">📡 離線中，這一章還沒預載。回到有網路時再開，或事先用選單「⬇️ 離線預載」。</p>';
+                chapterContent.classList.remove('manga-mode');
+                chapterContent.innerHTML = '<p data-index="0">📡 離線中，這一章還沒預載（漫畫需連線）。回到有網路時再開。</p>';
                 chapterView.style.display = 'block';
                 chapterList.querySelectorAll('li').forEach(li => {
                     li.classList.toggle('active', parseInt(li.dataset.num) === num);
@@ -2171,17 +2188,28 @@
             }
 
             chapterTitle.textContent = chapter.title;
-            
-            const paragraphs = chapter.content
-                .split(/\n\s*\n/)
-                .filter(p => p.trim())
-                .map((p, i) => `<p data-index="${i}">${escapeHtml(p.trim())}</p>`)
-                .join('');
 
-            chapterContent.innerHTML = paragraphs || `<p data-index="0">${escapeHtml(chapter.content)}</p>`;
-            chapterContent.style.fontSize = fontSize + 'px';
-            chapterContent.style.fontWeight = fontWeight;
-            
+            if (Array.isArray(chapter.images)) {
+                // 漫畫（條漫）：垂直排圖，每頁帶 data-index 以沿用進度/書籤/自動捲動
+                chapterContent.classList.add('manga-mode');
+                chapterContent.style.fontSize = '';
+                chapterContent.style.fontWeight = '';
+                chapterContent.innerHTML = chapter.images.map((url, i) =>
+                    `<img class="manga-page" data-index="${i}" src="${escapeHtml(url)}" loading="lazy" alt="第${i + 1}頁">`
+                ).join('');
+            } else {
+                // 小說：段落文字
+                chapterContent.classList.remove('manga-mode');
+                const paragraphs = chapter.content
+                    .split(/\n\s*\n/)
+                    .filter(p => p.trim())
+                    .map((p, i) => `<p data-index="${i}">${escapeHtml(p.trim())}</p>`)
+                    .join('');
+                chapterContent.innerHTML = paragraphs || `<p data-index="0">${escapeHtml(chapter.content)}</p>`;
+                chapterContent.style.fontSize = fontSize + 'px';
+                chapterContent.style.fontWeight = fontWeight;
+            }
+
             chapterView.style.display = 'block';
 
             // 顯示進度（章節號 + 本章閱讀百分比）
@@ -2221,7 +2249,7 @@
 
         function getCurrentParagraphIndex() {
             // 找出目前畫面中央的段落
-            const paragraphs = chapterContent.querySelectorAll('p[data-index]');
+            const paragraphs = chapterContent.querySelectorAll('[data-index]');
             const viewportCenter = window.innerHeight / 2;
             
             for (const p of paragraphs) {
@@ -2393,9 +2421,9 @@
         });
         
         // ============ 書籤功能 ============
-        // 取得畫面中央的段落
+        // 取得畫面中央的段落（漫畫則為畫面中央的圖片頁）
         function getCenterParagraph() {
-            const paragraphs = chapterContent.querySelectorAll('p');
+            const paragraphs = chapterContent.querySelectorAll('[data-index]');
             const viewportCenter = window.scrollY + window.innerHeight / 2;
             
             let closestP = null;
@@ -2421,7 +2449,7 @@
             const oldLine = chapterContent.querySelector('.bookmark-line');
             if (oldLine) oldLine.remove();
             
-            const p = chapterContent.querySelector(`p[data-index="${paragraphIndex}"]`);
+            const p = chapterContent.querySelector(`[data-index="${paragraphIndex}"]`);
             if (!p) return;
             
             const line = document.createElement('div');
@@ -2457,7 +2485,7 @@
 
                     // 自動跳到書籤位置（以進度 resume 時關閉，避免搶捲動）
                     if (autoJump) {
-                        const p = chapterContent.querySelector(`p[data-index="${bookmark.paragraph}"]`);
+                        const p = chapterContent.querySelector(`[data-index="${bookmark.paragraph}"]`);
                         if (p) {
                             setTimeout(() => {
                                 p.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -481,6 +481,11 @@
             <div class="new-book-form" id="newBookForm">
                 <input type="text" id="newBookTitle" placeholder="書名（例：Buy Back Your Time 繁中版）">
                 <input type="text" id="newBookAuthor" placeholder="作者（可留空）">
+                <div style="display:flex; gap:16px; align-items:center; color:#aaa; font-size:14px;">
+                    類型：
+                    <label style="display:flex; gap:5px; cursor:pointer;"><input type="radio" name="newBookType" value="text" checked> 📖 小說（txt）</label>
+                    <label style="display:flex; gap:5px; cursor:pointer;"><input type="radio" name="newBookType" value="manga"> 🖼️ 漫畫（圖片）</label>
+                </div>
                 <div class="new-book-actions">
                     <button class="btn btn-green" id="createBookBtn">建立</button>
                     <button class="btn btn-outline" id="cancelBookBtn">取消</button>
@@ -495,16 +500,23 @@
             
             <!-- 上傳分頁 -->
             <div class="tab-content active" id="tab-upload">
+                <!-- 漫畫模式：一次上傳「一話」的所有頁圖，需先填章節號/標題 -->
+                <div id="mangaFields" style="display:none; background:rgba(255,255,255,0.05); border-radius:10px; padding:14px 18px; margin-bottom:16px; display:none; gap:10px; flex-direction:column;">
+                    <div style="color:#4ade80; font-size:14px;">🖼️ 漫畫模式：一次拖入「一話」的所有頁圖（依檔名排序當頁序）</div>
+                    <input type="number" id="mangaChapterNum" placeholder="章節號（如 1、2…每話一個號）" style="padding:10px 12px; background:#1a1a2e; color:#fff; border:1px solid #444; border-radius:8px; font-size:15px;">
+                    <input type="text" id="mangaChapterTitle" placeholder="這話標題（如 第1話 相遇）" style="padding:10px 12px; background:#1a1a2e; color:#fff; border:1px solid #444; border-radius:8px; font-size:15px;">
+                </div>
+
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">📁</div>
-                    <h2>選擇或拖曳 TXT 檔案</h2>
-                    <p style="color: #888; margin-top: 10px;">會自動從標題提取章節號</p>
+                    <h2 id="uploadAreaTitle">選擇或拖曳 TXT 檔案</h2>
+                    <p style="color: #888; margin-top: 10px;" id="uploadAreaHint">會自動從標題提取章節號</p>
                     <label class="btn" style="margin-top: 20px;">
                         選擇檔案
                         <input type="file" id="fileInput" accept=".txt" multiple>
                     </label>
                 </div>
-                
+
                 <div class="progress-section" id="progressSection">
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
@@ -550,7 +562,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, get, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        
+        import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
         // Firebase 設定
         const firebaseConfig = {
             apiKey: "AIzaSyATCaOlYxkYTle1hPzYAcuXNlQHaAuO3-8",
@@ -565,14 +578,16 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const auth = getAuth(app);
+        const storage = getStorage(app);
         const provider = new GoogleAuthProvider();
-        
+
         // 狀態
         let chaptersData = {};
         let deleteTarget = null;
         let shelf = {};
         let currentBookId = 'fanren';
         let currentDataPath = 'novel';
+        let currentBookType = 'text';   // 'text' 小說 | 'manga' 漫畫
 
         // 依目前書解析路徑
         const chaptersPath = () => `${currentDataPath}/chapters`;
@@ -638,11 +653,23 @@
             if (!shelf[currentBookId]) currentBookId = books[0]?.id || 'fanren';
             bookSelect.value = currentBookId;
             currentDataPath = shelf[currentBookId]?.dataPath || 'novel';
+            applyBookType();
+        }
+
+        // 依目前書的類型切換上傳 UI（小說 txt / 漫畫圖片）
+        function applyBookType() {
+            currentBookType = shelf[currentBookId]?.type || 'text';
+            const isManga = currentBookType === 'manga';
+            document.getElementById('mangaFields').style.display = isManga ? 'flex' : 'none';
+            document.getElementById('uploadAreaTitle').textContent = isManga ? '選擇或拖曳「一話」的所有頁圖' : '選擇或拖曳 TXT 檔案';
+            document.getElementById('uploadAreaHint').textContent = isManga ? '依檔名排序當頁序；上方先填章節號與標題' : '會自動從標題提取章節號';
+            fileInput.accept = isManga ? 'image/*' : '.txt';
         }
 
         bookSelect.addEventListener('change', () => {
             currentBookId = bookSelect.value;
             currentDataPath = shelf[currentBookId]?.dataPath || `novel/books/${currentBookId}`;
+            applyBookType();
             loadChapters();
         });
 
@@ -660,11 +687,13 @@
             const title = newBookTitle.value.trim();
             if (!title) { alert('請輸入書名'); return; }
             const id = 'book_' + Date.now();
+            const type = document.querySelector('input[name="newBookType"]:checked')?.value || 'text';
             const maxOrder = Math.max(0, ...Object.values(shelf).map(b => b.order || 0));
             const entry = {
                 title,
                 author: newBookAuthor.value.trim() || '',
                 dataPath: `novel/books/${id}`,
+                type,
                 order: maxOrder + 1,
                 createdAt: Date.now()
             };
@@ -859,13 +888,18 @@
         });
         
         async function handleFiles(filesList) {
+            // 漫畫書：走圖片上傳流程
+            if (currentBookType === 'manga') {
+                return handleMangaUpload(filesList);
+            }
+
             const files = Array.from(filesList).filter(f => f.name.endsWith('.txt'));
-            
+
             if (files.length === 0) {
                 alert('請選擇 TXT 檔案');
                 return;
             }
-            
+
             progressSection.style.display = 'block';
             
             let uploaded = 0;
@@ -923,7 +957,63 @@
                 fileInput.value = '';
             }, 3000);
         }
-        
+
+        // ============ 漫畫：上傳「一話」的所有頁圖到 Storage，章節存圖片 URL 清單 ============
+        async function handleMangaUpload(filesList) {
+            const images = Array.from(filesList)
+                .filter(f => f.type.startsWith('image/'))
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+            if (images.length === 0) { alert('請選擇圖片檔（一話的所有頁）'); return; }
+
+            const chapterNum = parseInt(document.getElementById('mangaChapterNum').value);
+            if (!chapterNum) { alert('請先在上方填「章節號」'); return; }
+            const title = document.getElementById('mangaChapterTitle').value.trim() || `第 ${chapterNum} 話`;
+
+            progressSection.style.display = 'block';
+            const urls = [];
+            let failed = 0;
+
+            for (let i = 0; i < images.length; i++) {
+                const file = images[i];
+                try {
+                    statusText.textContent = `上傳第 ${chapterNum} 話 圖片 ${i + 1}/${images.length}: ${file.name}`;
+                    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+                    const pad = String(i + 1).padStart(3, '0');
+                    const path = `manga/${currentBookId}/${chapterNum}/${pad}.${ext}`;
+                    const r = sRef(storage, path);
+                    await uploadBytes(r, file, { contentType: file.type });
+                    urls.push(await getDownloadURL(r));
+                } catch (e) {
+                    console.error('圖片上傳失敗:', file.name, e);
+                    failed++;
+                }
+                const progress = Math.round(((i + 1) / images.length) * 100);
+                progressFill.style.width = progress + '%';
+                progressFill.textContent = progress + '%';
+            }
+
+            if (urls.length === 0) { statusText.textContent = '❌ 全部圖片上傳失敗（檢查登入/Storage 規則）'; return; }
+
+            // 章節內容 = 圖片 URL 清單；同步 toc
+            await set(ref(db, `${chaptersPath()}/${chapterNum}`), { title, images: urls, uploadedAt: Date.now() });
+            await set(ref(db, `${currentDataPath}/toc/${chapterNum}`), title);
+            await updateNovelInfo();
+
+            statusText.textContent = `完成！第 ${chapterNum} 話 上傳 ${urls.length} 頁` + (failed ? `，失敗 ${failed} 頁` : '');
+            await loadChapters();
+
+            // 章節號自動 +1、清標題，方便接著上傳下一話
+            document.getElementById('mangaChapterNum').value = chapterNum + 1;
+            document.getElementById('mangaChapterTitle').value = '';
+            setTimeout(() => {
+                progressSection.style.display = 'none';
+                progressFill.style.width = '0%';
+                progressFill.textContent = '0%';
+                fileInput.value = '';
+            }, 3000);
+        }
+
         async function updateNovelInfo() {
             const snapshot = await get(ref(db, chaptersPath()));
             const total = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
