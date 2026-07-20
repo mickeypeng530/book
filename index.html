@@ -378,6 +378,57 @@
             color: var(--button-text);
         }
 
+        /* 跳到書籤按鈕（只在有書籤時顯示，見 updateGotoBookmarkBtn） */
+        .goto-bookmark-btn {
+            padding: 8px 10px;
+            opacity: 0.7;
+        }
+
+        .goto-bookmark-btn:hover {
+            opacity: 1;
+        }
+
+        /* 跨裝置進度提示條 */
+        .sync-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 76px;
+            transform: translateX(-50%) translateY(20px);
+            width: max-content;
+            max-width: min(92vw, 440px);
+            background: var(--header-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            padding: 10px 12px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            z-index: 300;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .sync-toast.show {
+            display: flex;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .sync-toast-text {
+            flex: 1;
+            line-height: 1.4;
+            min-width: 0;
+        }
+
+        .sync-toast .btn {
+            padding: 6px 12px;
+            font-size: 13px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
         /* 書籤直線標記 */
         .bookmark-line {
             position: absolute;
@@ -1281,6 +1332,12 @@
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
             </svg>
         </button>
+        <button class="btn btn-icon goto-bookmark-btn" id="gotoBookmarkBtn" title="跳到書籤" style="display: none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 10 20 15 15 20"></polyline>
+                <path d="M4 4v7a4 4 0 0 0 4 4h12"></path>
+            </svg>
+        </button>
         <button class="btn btn-icon" id="scrollToBottomBtn" title="跳到底部">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="7 13 12 18 17 13"></polyline>
@@ -1294,6 +1351,13 @@
             </svg>
         </button>
     </nav>
+
+    <!-- 跨裝置進度提示：回到前景時發現其他裝置讀得更前面（不強制跳，避免搶走正在讀的位置） -->
+    <div class="sync-toast" id="syncToast">
+        <span class="sync-toast-text" id="syncToastText"></span>
+        <button class="btn" id="syncToastGo">跳過去</button>
+        <button class="btn btn-icon" id="syncToastClose" title="忽略">✕</button>
+    </div>
 
     <!-- 自動捲動指示器 -->
     <div class="scroll-indicator" id="scrollIndicator">
@@ -1323,7 +1387,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, get, set, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getStorage, ref as storageRef, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
         
@@ -1417,6 +1481,11 @@
         const scrollStartBtn = document.getElementById('scrollStartBtn');
         const scrollIndicator = document.getElementById('scrollIndicator');
         const bookmarkBtn = document.getElementById('bookmarkBtn');
+        const gotoBookmarkBtn = document.getElementById('gotoBookmarkBtn');
+        const syncToast = document.getElementById('syncToast');
+        const syncToastText = document.getElementById('syncToastText');
+        const syncToastGo = document.getElementById('syncToastGo');
+        const syncToastClose = document.getElementById('syncToastClose');
         
         // HTML 轉義：所有從 DB 讀出、要進 innerHTML 的字串都必須先過這層（防 stored XSS / 版面破壞）
         function escapeHtml(s) {
@@ -1437,6 +1506,17 @@
 
         function lsGetJson(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
         function lsSetJson(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+
+        // 寫進度的唯一入口：本機鏡像直接落地，遠端只在「比伺服器上那筆新」時才蓋。
+        // 為何不用 set()：RTDB 是「到達順序」決勝、不看 updatedAt，離線佇列 flush 出去的舊進度
+        // 會直接蓋掉別台的新進度（而且蓋完 updatedAt 也是舊的，開書時的比較邏輯救不回來）。
+        // transaction 在回線時會拿伺服器實際值重跑，正好是要的語意。一樣 fire-and-forget，別 await。
+        function writeProgress(pos) {
+            lsSetJson(progressCacheKey(), pos);
+            runTransaction(progressRef(), cur =>
+                (cur && (cur.updatedAt || 0) >= (pos.updatedAt || 0)) ? undefined : pos   // undefined = abort
+            ).catch(() => {});
+        }
 
         function cacheGetChapter(num) { return lsGetJson(chapCacheKey(num)); }
         function cachePutChapter(num, chapter) {
@@ -1685,7 +1765,7 @@
             const localPg = lsGetJson(progressCacheKey());
             if (localPg && (!pg || (localPg.updatedAt || 0) > (pg.updatedAt || 0))) {
                 pg = localPg;
-                set(progressRef(), localPg).catch(() => {});
+                writeProgress(localPg);
             }
             if (bm && (!pg || (bm.updatedAt || 0) >= (pg.updatedAt || 0))) {
                 resumeChapter = bm.chapter;
@@ -1702,6 +1782,13 @@
             // resume 開書不寫 progress（避免洗掉其他裝置的較新位置）；
             // 以進度接續時不自動跳書籤，避免兩個捲動互搶
             await showChapter(resumeChapter, { isResume: true, skipBookmarkJump: !useBookmark });
+
+            // resume 後把「上次寫入位置」的基準補上：留 null 的話「位置沒變就不寫」的 guard 會失效，
+            // 3 分鐘保險網會把剛讀回來的位置配新 timestamp 再寫一次，蓋掉其他裝置的較新進度
+            lastSavedPos = {
+                chapter: resumeChapter,
+                paragraph: useBookmark ? (bm && bm.paragraph) || 0 : resumeParagraph || 0
+            };
 
             // 以進度接續時，跳到進度段落
             if (!useBookmark && resumeParagraph !== null) {
@@ -2228,9 +2315,7 @@
             // fire-and-forget：離線時 set() 會排隊等回線，await 會卡住
             if (!opts.isResume) {
                 lastSavedPos = { chapter: num, paragraph: 0 };
-                const pos = { chapter: num, paragraph: 0, updatedAt: Date.now() };
-                lsSetJson(progressCacheKey(), pos);
-                set(progressRef(), pos).catch(() => {});
+                writeProgress({ chapter: num, paragraph: 0, updatedAt: Date.now() });
             }
         }
         
@@ -2280,15 +2365,15 @@
             if (!force && document.visibilityState === 'hidden') return;
 
             const paragraphIndex = getCurrentParagraphIndex();
-            // 位置沒變就不寫（省流量，也避免閒置分頁一直刷新 updatedAt）
-            if (!force && lastSavedPos &&
+            // 位置沒變就不寫 —— force 也一樣。force 的用途是「把還沒 debounce 出去的位置補存」，
+            // 不是「離頁就無條件蓋一筆」：背景擱一整天沒動過的分頁被關掉時，
+            // 不該拿舊位置配現在的 timestamp 蓋掉另一台的較新進度。
+            if (lastSavedPos &&
                 lastSavedPos.chapter === currentChapterIndex &&
                 lastSavedPos.paragraph === paragraphIndex) return;
 
-            // 本機鏡像先落地（離線也不丟），遠端 fire-and-forget（離線時 SDK 排隊、回線自動補送）
-            const pos = { chapter: currentChapterIndex, paragraph: paragraphIndex, updatedAt: Date.now() };
-            lsSetJson(progressCacheKey(), pos);
-            set(progressRef(), pos).catch(() => {});
+            // 本機鏡像先落地（離線也不丟），遠端走 writeProgress（只在比伺服器新時才蓋）
+            writeProgress({ chapter: currentChapterIndex, paragraph: paragraphIndex, updatedAt: Date.now() });
             lastSavedPos = { chapter: currentChapterIndex, paragraph: paragraphIndex };
             console.log(`自動存檔: 第${currentChapterIndex}章 第${paragraphIndex}段`);
         }
@@ -2307,10 +2392,63 @@
             clearTimeout(saveDebounceTimer);
         }
 
+        // ============ 回到前景時重拉遠端進度（跨裝置提示，不強制跳） ============
+        // 進度沒有 onValue 監聽（即時跟進會打斷正在讀的地方），所以靠回前景時拉一次。
+        let syncToastTimer = null;
+
+        function hideSyncToast() {
+            syncToast.classList.remove('show');
+            clearTimeout(syncToastTimer);
+        }
+
+        async function checkRemoteProgress() {
+            if (!currentUser || chapters.length === 0) return;
+
+            const snap = await tryGet(progressRef());
+            if (!snap || !snap.exists()) return;
+            const pg = snap.val();
+            if (!pg || !pg.chapter) return;
+
+            // 比本機鏡像：自己寫出去的那筆會同步更新鏡像，所以只有「別台寫的」才會比較新
+            const localTs = (lsGetJson(progressCacheKey()) || {}).updatedAt || 0;
+            if ((pg.updatedAt || 0) <= localTs) return;
+
+            // 位置實質相同就不用問（同章且段落差 1 以內，多半是對方剛好讀到附近）
+            if (pg.chapter === currentChapterIndex &&
+                Math.abs((pg.paragraph || 0) - getCurrentParagraphIndex()) <= 1) return;
+
+            const chap = chapters.find(c => c.num === pg.chapter);
+            if (!chap) return;   // 這本書沒有這章（資料不一致）就別提示
+
+            syncToastText.textContent = `其他裝置讀到第 ${pg.chapter} 章`;
+            syncToast.classList.add('show');
+            clearTimeout(syncToastTimer);
+            syncToastTimer = setTimeout(hideSyncToast, 15000);
+
+            syncToastGo.onclick = async () => {
+                hideSyncToast();
+                if (pg.chapter !== currentChapterIndex) {
+                    // skipBookmarkJump：目標是進度位置，別讓書籤搶捲動
+                    await showChapter(pg.chapter, { skipBookmarkJump: true });
+                }
+                setTimeout(() => {
+                    const el = chapterContent.querySelector(`[data-index="${pg.paragraph || 0}"]`);
+                    if (el) el.scrollIntoView({ behavior: 'auto', block: 'center' });
+                    // showChapter 剛把 progress 寫成「本章第 0 段」，補存實際落點；
+                    // 否則使用者跳完馬上關掉（來不及等 3 秒 debounce）會退回章首
+                    setTimeout(() => saveReadingPosition(), 250);
+                }, 150);
+            };
+        }
+
+        syncToastClose.addEventListener('click', hideSyncToast);
+
         // 頁面關閉/隱藏時強制存一次（iOS 不觸發 beforeunload，靠 visibilitychange/pagehide）
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
                 saveReadingPosition(true);
+            } else {
+                checkRemoteProgress();
             }
         });
 
@@ -2468,6 +2606,25 @@
             bookmarkBtn.classList.remove('active');
         }
         
+        // 「跳到書籤」按鈕只在有書籤時出現（書籤在別章也算，按了會先翻過去）
+        function updateGotoBookmarkBtn() {
+            gotoBookmarkBtn.style.display = currentBookmark ? '' : 'none';
+        }
+
+        // 跳到書籤位置：同章直接捲，別章先翻章（showChapter 預設 autoJump 會自己捲到書籤）
+        async function gotoBookmark() {
+            const bm = currentBookmark;
+            if (!bm) return;
+            if (bm.chapter !== currentChapterIndex) {
+                await showChapter(bm.chapter);
+                return;
+            }
+            const p = chapterContent.querySelector(`[data-index="${bm.paragraph}"]`);
+            if (p) p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        gotoBookmarkBtn.addEventListener('click', gotoBookmark);
+
         // 載入書籤（在 showChapter 內呼叫：畫線 + 若書籤在本章則自動跳過去）
         async function loadBookmark(autoJump = true) {
             clearBookmarkLine();
@@ -2494,6 +2651,7 @@
                     }
                 }
             }
+            updateGotoBookmarkBtn();
         }
 
         // 即時監聽書籤：其他裝置改書籤時，本機標記同步更新（不強制捲動，避免打斷閱讀）
@@ -2508,6 +2666,7 @@
                 } else {
                     clearBookmarkLine();
                 }
+                updateGotoBookmarkBtn();
             });
         }
 
@@ -2522,6 +2681,7 @@
             lsSetJson(bookmarkCacheKey(), currentBookmark);
             set(bookmarkRef(), currentBookmark).catch(() => {});   // 離線排隊，回線補送
             showBookmarkLine(paragraphIndex);
+            updateGotoBookmarkBtn();
         }
 
         // 刪除書籤
@@ -2530,6 +2690,7 @@
             localStorage.removeItem(bookmarkCacheKey());
             set(bookmarkRef(), null).catch(() => {});
             clearBookmarkLine();
+            updateGotoBookmarkBtn();
         }
         
         // 書籤按鈕點擊
